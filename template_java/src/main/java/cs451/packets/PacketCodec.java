@@ -1,6 +1,5 @@
 package cs451.packets;
 
-import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
