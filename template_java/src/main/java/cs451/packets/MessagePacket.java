@@ -5,8 +5,8 @@ import java.io.Serializable;
 public class MessagePacket extends Packet implements Serializable {
     public final String message;
 
-    public MessagePacket(int id, String message) {
-        super(id);
+    public MessagePacket(int senderId, int id, String message) {
+        super(senderId, id);
         this.message = message;
     }
 
@@ -14,6 +14,7 @@ public class MessagePacket extends Packet implements Serializable {
     public String toString() {
         return "MessagePacket{" +
                 "message='" + message + '\'' +
+                ", senderId=" + senderId +
                 ", id=" + id +
                 '}';
     }
