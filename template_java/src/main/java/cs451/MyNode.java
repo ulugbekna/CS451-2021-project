@@ -6,11 +6,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MyNode {
     public final Node me;
     public final HashMap<Integer, Node> peers;
+    public final PeerMsgTbl<Boolean> seenMessages;
     public AtomicInteger msgUid = new AtomicInteger(0);
 
     public MyNode(Node me, HashMap<Integer, Node> peers) {
         this.me = me;
         this.peers = peers;
+        seenMessages = new PeerMsgTbl<>();
     }
 
     @Override

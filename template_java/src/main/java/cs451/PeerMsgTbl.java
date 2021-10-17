@@ -1,9 +1,8 @@
 package cs451;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 
-class AckSyncTbl {
+class PeerMsgTbl<T> {
     /*
     Invariants to uphold:
         - since in `get` we get a value for a certain key in a conditional and then proceed to operate on it,
@@ -12,24 +11,23 @@ class AckSyncTbl {
      */
     private final ConcurrentHashMap<
             Integer /* port */,
-            ConcurrentHashMap<Integer /* msgID */, ScheduledFuture<?>>> tbl =
+            ConcurrentHashMap<Integer /* msgID */, T>> tbl =
             new ConcurrentHashMap<>();
 
-    public void set(int port, int msgId, ScheduledFuture<?> fut) {
-        tbl.computeIfAbsent(port, (_port) -> new ConcurrentHashMap<>());
+    public void set(int port, int msgId, T v) {
+        tbl.computeIfAbsent(port, (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>());
 
         var tblById = tbl.get(port);
         assert tblById != null;
 
-        tblById.put(msgId, fut);
+        tblById.put(msgId, v);
     }
 
     /*
      * Get the future by `port` and `msgId`. Returns `null` if not present.
      * */
-    public ScheduledFuture<?> get(int port, int msgId) {
+    public T get(int port, int msgId) {
         var tblById = tbl.get(port);
-        if (tblById != null) {return tblById.get(msgId);}
-        return null;
+        return tblById != null ? tblById.get(msgId) : null;
     }
 }
