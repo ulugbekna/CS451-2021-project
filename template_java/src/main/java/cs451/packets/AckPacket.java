@@ -1,5 +1,12 @@
 package cs451.packets;
 
-public class AckPacket extends Packet {
+import java.io.Serializable;
+
+public class AckPacket extends Packet implements Serializable {
     public AckPacket(int id) {super(id);}
+
+    @Override
+    public String toString() {
+        return "AckPacket{id=" + id + "}";
+    }
 }
