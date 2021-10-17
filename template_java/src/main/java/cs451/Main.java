@@ -4,8 +4,10 @@ import cs451.packets.AckPacket;
 import cs451.packets.MessagePacket;
 import cs451.packets.PacketCodec;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.*;
@@ -23,8 +25,11 @@ public class Main {
                     Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
 
     final static PeerMsgTbl<ScheduledFuture<?>> ackSyncTbl = new PeerMsgTbl<>();
+    final static PeerMsgTbl<Boolean> seenMsgs = new PeerMsgTbl<>();
 
+    final static ConcurrentLinkedDeque<MessagePacket> msgs = new ConcurrentLinkedDeque<>();
     private static final int BUF_SZ = 128;
+    static String outputFilePath;
     private static DatagramSocket globalSocket = null;
 
     /*
@@ -41,7 +46,19 @@ public class Main {
         warn("Writing output.");
 
         if (globalSocket != null) globalSocket.close(); // TODO do a proper clean-up
+
         exec.shutdownNow();
+
+        try (FileOutputStream stream = new FileOutputStream(outputFilePath);) {
+            msgs.forEach(
+                    (msg) -> {
+                        try {
+                            stream.write(("d " + msg.senderId + " " + msg.id).getBytes(StandardCharsets.US_ASCII));
+                        } catch (IOException e) {
+                            error("writing to output file", e);
+                        }
+                    });
+        } catch (IOException e) {error("opening output file", e);}
     }
 
     private static void initSignalHandlers() {
@@ -72,11 +89,16 @@ public class Main {
                 }
             } else if (packet instanceof MessagePacket) {
                 var msgPacket = (MessagePacket) packet;
+
+                if (seenMsgs.set(fromPort, msgPacket.id, true) != null) {
+                    msgs.add(msgPacket);
+                }
+
                 // try sending an ack once,
                 // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
                 // TODO: can I optimize byte[] use ?
-                var ackPacket = new AckPacket((msgPacket.id));
-                var b = PacketCodec.convertToBytes(new AckPacket(msgPacket.id));
+                var ackPacket = new AckPacket(msgPacket.senderId, msgPacket.id);
+                var b = PacketCodec.convertToBytes(ackPacket);
                 try {
                     socket.send(new DatagramPacket(b, b.length, fromIP, fromPort));
                     trace("processIncomingRequests", "sending an ack: " + ackPacket);
@@ -136,6 +158,8 @@ public class Main {
         trace("Path to output: " + parser.output());
         trace("Path to config " + parser.config());
 
+        outputFilePath = parser.output();
+
         var hosts = parser.hosts();
 
         // resolve myAddr, myPort, myPeers
@@ -189,11 +213,12 @@ public class Main {
                 for (int msgId = firstMsgId;
                      msgId < firstMsgId + config.nMessages;
                      msgId = myNode.msgUid.incrementAndGet()) {
-                    var msgPacket = new MessagePacket(msgId, String.valueOf(msgId));
+                    var msgPacket = new MessagePacket(myNode.me.id, msgId, String.valueOf(msgId));
                     var outBuf = PacketCodec.convertToBytes(msgPacket);
                     var peerReceiver = myNode.peers.get(config.hostIdx);
                     var outPacket = new DatagramPacket(outBuf, 0, outBuf.length, peerReceiver.addr, peerReceiver.port);
-                    exec.submit(() -> sendPacketUntilAck(msgPacket, socket, outPacket, 1000)); // FIXME: timeout needs to be fixed
+                    exec.submit(() -> sendPacketUntilAck(
+                            msgPacket, socket, outPacket, 1000)); // FIXME: timeout needs to be fixed
                 }
             }
         } catch (Exception e) {
@@ -213,7 +238,7 @@ public class Main {
             sendPacketOrFailSilently(socket, outPacket);
 
             var infResend = exec.schedule(
-                    () -> sendPacketUntilAck(msgPacket, socket, outPacket, timeoutMs),
+                    () -> sendPacketUntilAck(msgPacket, socket, outPacket, timeoutMs * 2),
                     timeoutMs, TimeUnit.MILLISECONDS);
 
             ackSyncTbl.set(outPacket.getPort(), msgPacket.id, infResend);

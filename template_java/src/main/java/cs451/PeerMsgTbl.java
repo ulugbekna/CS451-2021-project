@@ -14,13 +14,13 @@ class PeerMsgTbl<T> {
             ConcurrentHashMap<Integer /* msgID */, T>> tbl =
             new ConcurrentHashMap<>();
 
-    public void set(int port, int msgId, T v) {
+    public T set(int port, int msgId, T v) {
         tbl.computeIfAbsent(port, (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>());
 
         var tblById = tbl.get(port);
         assert tblById != null;
 
-        tblById.put(msgId, v);
+        return tblById.put(msgId, v);
     }
 
     /*
