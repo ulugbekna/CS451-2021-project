@@ -1,16 +1,13 @@
 package cs451;
 
-import cs451.packets.AckPacket;
 import cs451.packets.MessagePacket;
 import cs451.packets.PacketCodec;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static cs451.Log.*;
 
@@ -24,13 +21,8 @@ public class Main {
             Executors.newScheduledThreadPool(
                     Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
 
-    final static PeerMsgTbl<ScheduledFuture<?>> ackSyncTbl = new PeerMsgTbl<>();
-    final static PeerMsgTbl<Boolean> seenMsgs = new PeerMsgTbl<>();
-
-    final static ConcurrentLinkedDeque<MessagePacket> msgs = new ConcurrentLinkedDeque<>();
-    private static final int BUF_SZ = 128;
-    static String outputFilePath;
-    private static DatagramSocket globalSocket = null;
+    static String outputFilePath; // must be set by main()
+    private static DatagramSocket globalSocket = null; // must be set by main()
 
     /*
      FUNCTIONALITY
@@ -48,94 +40,10 @@ public class Main {
         if (globalSocket != null) globalSocket.close(); // TODO do a proper clean-up
 
         exec.shutdownNow();
-
-        try (FileOutputStream stream = new FileOutputStream(outputFilePath);) {
-            msgs.forEach(
-                    (msg) -> {
-                        try {
-                            stream.write(("d " + msg.senderId + " " + msg.id).getBytes(StandardCharsets.US_ASCII));
-                        } catch (IOException e) {
-                            error("writing to output file", e);
-                        }
-                    });
-        } catch (IOException e) {error("opening output file", e);}
     }
 
     private static void initSignalHandlers() {
         Runtime.getRuntime().addShutdownHook(new Thread(Main::handleSignal));
-    }
-
-    /*
-     * Invariant: Must not throw since runs in the executor
-     *
-     * We handle two types of packets, ie all kinds of packets that exist
-     * 1. AckPacket
-     *   A peer is sending an ack for the packet that we sent,
-     *   so we should stop resending it
-     * 2. MessagePacket
-     *   A peer sent us a message packet, so we try sending an ack for it to that peer
-     *
-     * TODO: handle "delivery"
-     * */
-    private static void processIncomingPacket(Object packet, DatagramSocket socket, InetAddress fromIP, int fromPort) {
-        try {
-            trace("processIncomingPacket", "received " + packet);
-            if (packet instanceof AckPacket) {
-                // stop infinite resending of the packet, since received an ack for it
-                var ackPacket = (AckPacket) packet;
-                var infResend = ackSyncTbl.get(fromPort, ackPacket.id);
-                if (infResend != null) {
-                    infResend.cancel(false);
-                }
-            } else if (packet instanceof MessagePacket) {
-                var msgPacket = (MessagePacket) packet;
-
-                if (seenMsgs.set(fromPort, msgPacket.id, true) != null) {
-                    msgs.add(msgPacket);
-                }
-
-                // try sending an ack once,
-                // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
-                // TODO: can I optimize byte[] use ?
-                var ackPacket = new AckPacket(msgPacket.senderId, msgPacket.id);
-                var b = PacketCodec.convertToBytes(ackPacket);
-                try {
-                    socket.send(new DatagramPacket(b, b.length, fromIP, fromPort));
-                    trace("processIncomingRequests", "sending an ack: " + ackPacket);
-                } catch (IOException e) {
-                    warn("couldn't send ack to " +
-                            fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
-                }
-            } else {
-                assert false; /* a packet MUST be either AckPacket or MessagePacket} */
-            }
-        } catch (Exception e) {
-            error("processing incoming packet", e);
-        }
-    }
-
-    /*
-     * Listen to a socket and submit tasks to schedule incoming packets
-     * */
-    private static void listenToAndHandleIncomingPackets(DatagramSocket socket) {
-        byte[] recvBuf = new byte[BUF_SZ];
-        DatagramPacket inputPacket = new DatagramPacket(recvBuf, recvBuf.length);
-        info("Starting to wait for a client to connect...");
-
-        while (true) {
-            try {
-                socket.receive(inputPacket);
-
-                var packet = PacketCodec.convertFromBytes(
-                        Arrays.copyOfRange(recvBuf, 0, inputPacket.getLength()));
-
-                exec.submit(() -> processIncomingPacket(packet, socket,
-                        inputPacket.getAddress(),
-                        inputPacket.getPort()));
-            } catch (IOException | ClassNotFoundException e) {
-                error("receive", e);
-            }
-        }
     }
 
     public static void main(String[] args) throws UnknownHostException, SocketException {
@@ -185,9 +93,11 @@ public class Main {
         final var socket = new DatagramSocket(myNode.me.port, myNode.me.addr);
         globalSocket = socket;
 
-        exec.submit(() -> sendByPerfectLinksConfig(socket, parser, myNode));
+        var link = new PerfectLinkUdp(socket, exec);
 
-        listenToAndHandleIncomingPackets(socket);
+        exec.submit(() -> sendByPerfectLinksConfig(link, parser, myNode));
+
+        link.listenToAndHandleIncomingPackets(); // beware: blocks the thread
     }
 
     private static ConfigParser.PerfectLinksConfig[] parsePerfectLinksConfig(Parser parser) {
@@ -202,7 +112,7 @@ public class Main {
         }
     }
 
-    private static void sendByPerfectLinksConfig(DatagramSocket socket, Parser parser, MyNode myNode) {
+    private static void sendByPerfectLinksConfig(PerfectLinkUdp link, Parser parser, MyNode myNode) {
         try {
             var configs = parsePerfectLinksConfig(parser);
             assert configs != null;
@@ -217,8 +127,8 @@ public class Main {
                     var outBuf = PacketCodec.convertToBytes(msgPacket);
                     var peerReceiver = myNode.peers.get(config.hostIdx);
                     var outPacket = new DatagramPacket(outBuf, 0, outBuf.length, peerReceiver.addr, peerReceiver.port);
-                    exec.submit(() -> sendPacketUntilAck(
-                            msgPacket, socket, outPacket, 1000)); // FIXME: timeout needs to be fixed
+                    exec.submit(() -> link.sendPacketAndScheduleResend(
+                            msgPacket, outPacket, 100)); // FIXME: timeout needs to be fixed
                 }
             }
         } catch (Exception e) {
@@ -226,34 +136,5 @@ public class Main {
         }
     }
 
-    /*
-     * Invariant: do not raise
-     * */
-    private static void sendPacketUntilAck(MessagePacket msgPacket,
-                                           DatagramSocket socket,
-                                           DatagramPacket outPacket,
-                                           int timeoutMs) {
-        try {
-            trace("sendPacketUntilAck", "sending " + msgPacket + " to :" + outPacket.getPort());
-            sendPacketOrFailSilently(socket, outPacket);
 
-            var infResend = exec.schedule(
-                    () -> sendPacketUntilAck(msgPacket, socket, outPacket, timeoutMs * 2),
-                    timeoutMs, TimeUnit.MILLISECONDS);
-
-            ackSyncTbl.set(outPacket.getPort(), msgPacket.id, infResend);
-        } catch (Throwable e) {
-            error("couldn't send a message packet from perfect links config", e);
-        }
-    }
-
-    private static void sendPacketOrFailSilently(DatagramSocket socket, DatagramPacket outPacket) {
-        try {
-            socket.send(outPacket);
-        } catch (Throwable e) {
-            // any failure in sending a packet should be logged,
-            // but since we have infinite resend, we don't do anything about the failure
-            error("couldn't send a message packet from perfect links config", e);
-        }
-    }
 }
