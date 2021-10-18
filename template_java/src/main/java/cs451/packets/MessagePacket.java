@@ -13,9 +13,9 @@ public class MessagePacket extends Packet implements Serializable {
     @Override
     public String toString() {
         return "MessagePacket{" +
-                "message='" + message + '\'' +
+                "id='" + id + '\'' +
+                ", message=" + message +
                 ", senderId=" + senderId +
-                ", id=" + id +
                 '}';
     }
 }
