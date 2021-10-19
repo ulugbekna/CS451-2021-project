@@ -119,6 +119,9 @@ public class Main {
             trace(Arrays.toString(configs));
 
             for (var config : configs) {
+                if (config.hostId == myNode.me.id)
+                    continue; // don't send to myself
+
                 final var firstMsgId = myNode.msgUid.get();
                 for (int msgId = firstMsgId;
                      msgId < firstMsgId + config.nMessages;
