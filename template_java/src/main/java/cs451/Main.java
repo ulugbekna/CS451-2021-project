@@ -3,9 +3,12 @@ package cs451;
 import cs451.packets.MessagePacket;
 import cs451.packets.PacketCodec;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.net.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -21,6 +24,8 @@ public class Main {
             Executors.newScheduledThreadPool(
                     Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
 
+    final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
+
     static String outputFilePath; // must be set by main()
     private static DatagramSocket globalSocket = null; // must be set by main()
 
@@ -28,18 +33,24 @@ public class Main {
      FUNCTIONALITY
      */
     private static void handleSignal() {
-        // TODO: terminate on apt signals
-        // TODO: flush output
-
-        //immediately stop network packet processing
         warn("Immediately stopping network packet processing.");
-
-        //write/flush output file if necessary
         warn("Writing output.");
 
-        if (globalSocket != null) globalSocket.close(); // TODO do a proper clean-up
-
         exec.shutdownNow();
+
+        if (globalSocket != null) globalSocket.close();
+
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
+            for (String s : eventLog) {
+                writer.write(s);
+                writer.write('\n');
+            }
+            writer.flush();
+            writer.close();
+        } catch (Exception e) {
+            error("flushing to file", e);
+        }
     }
 
     private static void initSignalHandlers() {
@@ -94,6 +105,8 @@ public class Main {
         globalSocket = socket;
 
         var link = new PerfectLinkUdp(socket, exec);
+        link.registerOnDeliverCallback(
+                messagePacket -> eventLog.add("d " + messagePacket.senderId + " " + messagePacket.id));
 
         exec.submit(() -> sendByPerfectLinksConfig(link, parser, myNode));
 
@@ -128,10 +141,13 @@ public class Main {
                      msgId = myNode.msgUid.incrementAndGet()) {
                     var msgPacket = new MessagePacket(myNode.me.id, msgId, String.valueOf(msgId));
                     var outBuf = PacketCodec.convertToBytes(msgPacket);
-                    var peerReceiver = myNode.peers.get(config.hostIdx);
+                    var peerReceiver = myNode.peers.get(config.hostId);
                     var outPacket = new DatagramPacket(outBuf, 0, outBuf.length, peerReceiver.addr, peerReceiver.port);
-                    exec.submit(() -> link.sendPacketAndScheduleResend(
-                            msgPacket, outPacket, 100)); // FIXME: timeout needs to be fixed
+                    var event = "b " + msgId;
+                    exec.submit(() -> {
+                        eventLog.add(event);
+                        link.sendPacketAndScheduleResend(msgPacket, outPacket, 100);
+                    }); // FIXME: timeout needs to be fixed
                 }
             }
         } catch (Exception e) {

@@ -30,4 +30,9 @@ class PeerMsgTbl<T> {
         var tblById = tbl.get(port);
         return tblById != null ? tblById.get(msgId) : null;
     }
+
+    public T retrieve(int port, int msgId) {
+        var tblById = tbl.get(port);
+        return tblById != null ? tblById.remove(msgId) : null;
+    }
 }

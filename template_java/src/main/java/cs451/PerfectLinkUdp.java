@@ -10,17 +10,18 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 import static cs451.Log.*;
 
 public class PerfectLinkUdp {
     private static final int BUF_SZ = 2048;
+    public final PeerMsgTbl<Boolean> seenMsgs;
     final BlockingQueue<MessagePacket> deliveredMessages;
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
     private final PeerMsgTbl<ScheduledFuture<?>> ackSyncTbl;
-    private final PeerMsgTbl<Boolean> seenMsgs;
-
+    private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
 
     PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
         this.socket = socket;
@@ -63,15 +64,15 @@ public class PerfectLinkUdp {
 
     private void processIncomingAckPacket(AckPacket ackPacket, int fromPort) {
         // stop infinite resending of the packet, since received an ack for it
-        var infResend = ackSyncTbl.get(fromPort, ackPacket.id);
+        var infResend = ackSyncTbl.retrieve(fromPort, ackPacket.id);
         if (infResend != null) {
             infResend.cancel(false);
         }
     }
 
     private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) throws IOException {
-        if (seenMsgs.set(fromPort, packet.id, true) != null) { // TODO: this block should happen atomically perhaps?
-            deliveredMessages.add(packet);
+        if (seenMsgs.set(fromPort, packet.id, true) == null) { // TODO: this block should happen atomically perhaps?
+            onDeliverCallback.accept(packet);
         }
 
         // try sending an ack once,
@@ -142,6 +143,10 @@ public class PerfectLinkUdp {
                 error("on receive: sending an ack", e);
             }
         }
+    }
+
+    public void registerOnDeliverCallback(Consumer<MessagePacket> cb) {
+        onDeliverCallback = cb;
     }
 
     public void close() {
