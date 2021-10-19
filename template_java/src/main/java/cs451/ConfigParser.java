@@ -29,21 +29,23 @@ public class ConfigParser {
             var hostIdx = Integer.parseInt(ns[1]);
             return new PerfectLinksConfig(nMessages, hostIdx);
         });
-        return configStream.toArray(PerfectLinksConfig[]::new);
+        var arr = configStream.toArray(PerfectLinksConfig[]::new);
+        lines.close();
+        return arr;
     }
 
     protected static class PerfectLinksConfig {
         public final int nMessages;
-        public final int hostIdx;
+        public final int hostId;
 
-        public PerfectLinksConfig(int nMessages, int hostIdx) {
+        public PerfectLinksConfig(int nMessages, int hostId) {
             this.nMessages = nMessages;
-            this.hostIdx = hostIdx;
+            this.hostId = hostId;
         }
 
         @Override
         public String toString() {
-            return "PerfectLinksConfig{" + "nMessages=" + nMessages + ", hostIdx=" + hostIdx + '}';
+            return "PerfectLinksConfig{" + "nMessages=" + nMessages + ", hostId=" + hostId + '}';
         }
     }
 }
