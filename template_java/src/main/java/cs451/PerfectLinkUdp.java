@@ -136,8 +136,10 @@ public class PerfectLinkUdp {
                         Arrays.copyOfRange(recvBuf, 0, inputPacket.getLength()));
 
                 exec.submit(() -> processIncomingPacket(packet, inputPacket.getAddress(), inputPacket.getPort()));
-            } catch (IOException | ClassNotFoundException e) {
-                error("receive", e);
+            } catch (ClassNotFoundException e) {
+                error("on receive: deserializing ", e);
+            } catch (IOException e) {
+                error("on receive: sending an ack", e);
             }
         }
     }
