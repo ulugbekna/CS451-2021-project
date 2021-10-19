@@ -16,19 +16,17 @@ import static cs451.Log.*;
 
 public class PerfectLinkUdp {
     private static final int BUF_SZ = 2048;
-    public final PeerMsgTbl<Boolean> seenMsgs;
-    final BlockingQueue<MessagePacket> deliveredMessages;
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
     private final PeerMsgTbl<ScheduledFuture<?>> ackSyncTbl;
+    private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
     private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
 
     PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
         this.socket = socket;
         this.exec = exec;
         ackSyncTbl = new PeerMsgTbl<>();
-        seenMsgs = new PeerMsgTbl<>();
-        deliveredMessages = new LinkedBlockingQueue<>();
+        seenMsgs = new ConcurrentHashMap<>(128);
     }
 
     private void sendPacketOrFailSilently(DatagramSocket socket, DatagramPacket outPacket) {
@@ -71,9 +69,10 @@ public class PerfectLinkUdp {
     }
 
     private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) throws IOException {
-        if (seenMsgs.set(fromPort, packet.id, true) == null) { // TODO: this block should happen atomically perhaps?
+        seenMsgs.computeIfAbsent(packet, (p) -> {
             onDeliverCallback.accept(packet);
-        }
+            return true;
+        });
 
         // try sending an ack once,
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
