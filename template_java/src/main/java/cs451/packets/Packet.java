@@ -1,15 +1,14 @@
 package cs451.packets;
 
-import java.io.Serializable;
 import java.util.Objects;
 
-public abstract class Packet implements Serializable {
+public abstract class Packet {
     public final int senderId;
-    public final int id;
+    public final int messageId;
 
     protected Packet(int senderId, int id) {
         this.senderId = senderId;
-        this.id = id;
+        this.messageId = id;
     }
 
     @Override
@@ -17,19 +16,19 @@ public abstract class Packet implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Packet packet = (Packet) o;
-        return senderId == packet.senderId && id == packet.id;
+        return senderId == packet.senderId && messageId == packet.messageId;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(senderId, id);
+        return Objects.hash(senderId, messageId);
     }
 
     @Override
     public String toString() {
         return "Packet{" +
                 "senderId=" + senderId +
-                ", id=" + id +
+                ", messageId=" + messageId +
                 '}';
     }
 }

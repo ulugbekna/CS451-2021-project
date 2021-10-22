@@ -1,9 +1,8 @@
 package cs451.packets;
 
-import java.io.Serializable;
 import java.util.Objects;
 
-public class MessagePacket extends Packet implements Serializable {
+public class MessagePacket extends Packet {
     public final String message;
 
     public MessagePacket(int senderId, int id, String message) {
@@ -28,7 +27,7 @@ public class MessagePacket extends Packet implements Serializable {
     @Override
     public String toString() {
         return "MessagePacket{" +
-                "id='" + id + '\'' +
+                "messageId=" + messageId +
                 ", message=" + message +
                 ", senderId=" + senderId +
                 '}';
