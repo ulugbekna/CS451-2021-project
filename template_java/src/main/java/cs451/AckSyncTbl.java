@@ -1,8 +1,9 @@
 package cs451;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 
-class PeerMsgTbl<T> {
+class AckSyncTbl {
     /*
     Invariants to uphold:
         - since in `get` we get a value for a certain key in a conditional and then proceed to operate on it,
@@ -11,11 +12,12 @@ class PeerMsgTbl<T> {
      */
     private final ConcurrentHashMap<
             Integer /* port */,
-            ConcurrentHashMap<Integer /* msgID */, T>> tbl =
+            ConcurrentHashMap<Integer /* msgID */, ScheduledFuture<?>>> tbl =
             new ConcurrentHashMap<>();
 
-    public T set(int port, int msgId, T v) {
-        tbl.computeIfAbsent(port, (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>());
+    public ScheduledFuture<?> set(int port, int msgId, ScheduledFuture<?> v) {
+        tbl.computeIfAbsent(port,
+                (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>());
 
         var tblById = tbl.get(port);
         assert tblById != null;
@@ -23,15 +25,7 @@ class PeerMsgTbl<T> {
         return tblById.put(msgId, v);
     }
 
-    /*
-     * Get the future by `port` and `msgId`. Returns `null` if not present.
-     * */
-    public T get(int port, int msgId) {
-        var tblById = tbl.get(port);
-        return tblById != null ? tblById.get(msgId) : null;
-    }
-
-    public T retrieve(int port, int msgId) {
+    public ScheduledFuture<?> retrieve(int port, int msgId) {
         var tblById = tbl.get(port);
         return tblById != null ? tblById.remove(msgId) : null;
     }
