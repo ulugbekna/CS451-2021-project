@@ -8,12 +8,21 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Arrays;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static cs451.Log.*;
 
+/*
+ * TODO: write tests
+ * TODO: profile
+ * TODO: better serde
+ * TODO: reuse byte[] when can when sending packets?
+ * TODO: add interruption to while(true)
+ * */
 public class PerfectLinkUdp {
     private static final int BUF_SZ = 2048;
     private final DatagramSocket socket;
@@ -77,11 +86,12 @@ public class PerfectLinkUdp {
         // try sending an ack once,
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
         // TODO: can I optimize byte[] use ?
-        var ackPacket = new AckPacket(packet.senderId, packet.id);
-        var b = PacketCodec.convertToBytes(ackPacket);
+        byte[] packetBytes = new byte[9];
+        var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.id);
         try {
-            socket.send(new DatagramPacket(b, b.length, fromIP, fromPort));
-            trace("processIncomingRequests", "sending an ack: " + ackPacket);
+            socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
+            trace("processIncomingRequests",
+                    "sending an ack: AckPacket{ senderId = " + packet.senderId + "; Id = " + packet.id);
         } catch (IOException e) {
             warn("couldn't send ack to " +
                     fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
@@ -132,12 +142,9 @@ public class PerfectLinkUdp {
             try {
                 socket.receive(inputPacket);
 
-                var packet = PacketCodec.convertFromBytes(
-                        Arrays.copyOfRange(recvBuf, 0, inputPacket.getLength()));
+                var packet = PacketCodec.deserialize(recvBuf, inputPacket.getLength());
 
                 exec.submit(() -> processIncomingPacket(packet, inputPacket.getAddress(), inputPacket.getPort()));
-            } catch (ClassNotFoundException e) {
-                error("on receive: deserializing ", e);
             } catch (IOException e) {
                 error("on receive: sending an ack", e);
             }

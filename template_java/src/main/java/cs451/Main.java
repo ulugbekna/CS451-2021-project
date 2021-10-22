@@ -24,6 +24,9 @@ public class Main {
             Executors.newScheduledThreadPool(
                     Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
 
+    final static int INITIAL_RESEND_TIMEOUT = 20;
+    final static int SEND_BUF_SZ = 128;
+
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
 
     static String outputFilePath; // must be set by main()
@@ -139,14 +142,16 @@ public class Main {
                 for (int msgId = firstMsgId;
                      msgId < firstMsgId + config.nMessages;
                      msgId = myNode.msgUid.incrementAndGet()) {
-                    var msgPacket = new MessagePacket(myNode.me.id, msgId, String.valueOf(msgId));
-                    var outBuf = PacketCodec.convertToBytes(msgPacket);
+                    var msgPacket = new MessagePacket(myNode.me.id, msgId, String.valueOf(msgId)); // TODO: remove
+                    var outBuf = new byte[SEND_BUF_SZ];
+                    var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, myNode.me.id, msgId,
+                            String.valueOf(msgId));
                     var peerReceiver = myNode.peers.get(config.hostId);
-                    var outPacket = new DatagramPacket(outBuf, 0, outBuf.length, peerReceiver.addr, peerReceiver.port);
+                    var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerReceiver.addr, peerReceiver.port);
                     var event = "b " + msgId;
                     exec.submit(() -> {
                         eventLog.add(event);
-                        link.sendPacketAndScheduleResend(msgPacket, outPacket, 100);
+                        link.sendPacketAndScheduleResend(msgPacket, outPacket, INITIAL_RESEND_TIMEOUT);
                     }); // FIXME: timeout needs to be fixed
                 }
             }
