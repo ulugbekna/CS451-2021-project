@@ -42,7 +42,7 @@ public class PacketCodec {
                 return new AckPacket(senderId, msgId);
             case MESSAGE_PACKET_HEADER_BYTE:
                 return new MessagePacket(senderId, msgId, new String(
-                        Arrays.copyOfRange(buf, PACKET_MESSAGE_IDX, len - 1)));
+                        Arrays.copyOfRange(buf, PACKET_MESSAGE_IDX, len)));
             default:
                 throw new RuntimeException("Incorrect serialized format received");
         }
