@@ -27,14 +27,14 @@ public class PerfectLinkUdp {
     private static final int BUF_SZ = 128;
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
-    private final PeerMsgTbl<ScheduledFuture<?>> ackSyncTbl;
+    private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
     private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
 
     PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
         this.socket = socket;
         this.exec = exec;
-        ackSyncTbl = new PeerMsgTbl<>();
+        ackSyncTbl = new AckSyncTbl();
         seenMsgs = new ConcurrentHashMap<>(128);
     }
 
