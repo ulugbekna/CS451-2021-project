@@ -109,7 +109,7 @@ public class Main {
 
         var link = new PerfectLinkUdp(socket, exec);
         link.registerOnDeliverCallback(
-                messagePacket -> eventLog.add("d " + messagePacket.senderId + " " + messagePacket.id));
+                messagePacket -> eventLog.add("d " + messagePacket.senderId + " " + messagePacket.messageId));
 
         exec.submit(() -> sendByPerfectLinksConfig(link, parser, myNode));
 

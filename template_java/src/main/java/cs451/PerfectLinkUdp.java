@@ -63,7 +63,7 @@ public class PerfectLinkUdp {
                     () -> sendPacketAndScheduleResend(msgPacket, outPacket, timeoutMs * 2),
                     timeoutMs, TimeUnit.MILLISECONDS);
 
-            ackSyncTbl.set(outPacket.getPort(), msgPacket.id, infResend);
+            ackSyncTbl.set(outPacket.getPort(), msgPacket.messageId, infResend);
         } catch (Throwable e) {
             error("couldn't send a message packet from perfect links config", e);
         }
@@ -71,7 +71,7 @@ public class PerfectLinkUdp {
 
     private void processIncomingAckPacket(AckPacket ackPacket, int fromPort) {
         // stop infinite resending of the packet, since received an ack for it
-        var infResend = ackSyncTbl.retrieve(fromPort, ackPacket.id);
+        var infResend = ackSyncTbl.retrieve(fromPort, ackPacket.messageId);
         if (infResend != null) {
             infResend.cancel(false);
         }
@@ -87,11 +87,11 @@ public class PerfectLinkUdp {
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
         // TODO: can I optimize byte[] use ?
         byte[] packetBytes = new byte[9];
-        var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.id);
+        var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
             trace("processIncomingRequests",
-                    "sending an ack: AckPacket{ senderId = " + packet.senderId + "; Id = " + packet.id);
+                    "sending an ack: AckPacket{ senderId = " + packet.senderId + "; Id = " + packet.messageId);
         } catch (IOException e) {
             warn("couldn't send ack to " +
                     fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
