@@ -14,7 +14,6 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static cs451.Log.*;
 
-
 public class Main {
 
     /*
@@ -24,7 +23,7 @@ public class Main {
             Executors.newScheduledThreadPool(
                     Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
 
-    final static int INITIAL_RESEND_TIMEOUT = 20;
+    final static int INITIAL_RESEND_TIMEOUT = 100;
     final static int SEND_BUF_SZ = 128;
 
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
@@ -36,20 +35,20 @@ public class Main {
      FUNCTIONALITY
      */
     private static void handleSignal() {
-        warn("Immediately stopping network packet processing.");
-        warn("Writing output.");
-
         exec.shutdownNow();
 
         if (globalSocket != null) globalSocket.close();
 
         try {
+            long startTime = System.nanoTime();
             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
             for (String s : eventLog) {
                 writer.write(s);
                 writer.write('\n');
             }
             writer.flush();
+            long endTime = System.nanoTime();
+            System.out.println("Execution time in milliseconds: " + (endTime - startTime) / 1000000);
             writer.close();
         } catch (Exception e) {
             error("flushing to file", e);
@@ -61,7 +60,7 @@ public class Main {
     }
 
     public static void main(String[] args) throws UnknownHostException, SocketException {
-        Log.TRACE();
+        Log.NONE();
 
         Parser parser = new Parser(args);
         parser.parse();
@@ -149,16 +148,12 @@ public class Main {
                     var peerReceiver = myNode.peers.get(config.hostId);
                     var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerReceiver.addr, peerReceiver.port);
                     var event = "b " + msgId;
-                    exec.submit(() -> {
-                        eventLog.add(event);
-                        link.sendPacketAndScheduleResend(msgPacket, outPacket, INITIAL_RESEND_TIMEOUT);
-                    }); // FIXME: timeout needs to be fixed
+                    eventLog.add(event);
+                    link.sendPacketAndScheduleResend(msgPacket, outPacket, INITIAL_RESEND_TIMEOUT);
                 }
             }
         } catch (Exception e) {
             error("", e);
         }
     }
-
-
 }
