@@ -13,11 +13,11 @@ class AckSyncTbl {
     private final ConcurrentHashMap<
             Integer /* port */,
             ConcurrentHashMap<Integer /* msgID */, ScheduledFuture<?>>> tbl =
-            new ConcurrentHashMap<>();
+            new ConcurrentHashMap<>(128);
 
     public ScheduledFuture<?> set(int port, int msgId, ScheduledFuture<?> v) {
         tbl.computeIfAbsent(port,
-                (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>());
+                (_port) -> /* could be cool to have a weak pointer */ new ConcurrentHashMap<>(256));
 
         var tblById = tbl.get(port);
         assert tblById != null;
