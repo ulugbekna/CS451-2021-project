@@ -15,16 +15,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import static cs451.Log.*;
 
 public class Main {
+    /*
+     * CONSTANTS
+     * */
+    final static int INITIAL_RESEND_TIMEOUT = 200;
+    final static int SEND_BUF_SZ = 128;
+    final static int THREAD_POOL_SZ = 1024;
 
     /*
      DATA
      */
+    final static long executionStartTime = System.nanoTime();
     final static ScheduledExecutorService exec =
             Executors.newScheduledThreadPool(
-                    Runtime.getRuntime().availableProcessors() - 1 /* `-1` because of main thread */);
-
-    final static int INITIAL_RESEND_TIMEOUT = 100;
-    final static int SEND_BUF_SZ = 128;
+                    THREAD_POOL_SZ /* `-1` because of main thread */);
 
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
 
@@ -48,7 +52,9 @@ public class Main {
             }
             writer.flush();
             long endTime = System.nanoTime();
-            System.out.println("Execution time in milliseconds: " + (endTime - startTime) / 1000000);
+            info("Writing to output file time in milliseconds: " + (endTime - startTime) / 1000000);
+            info("Execution time in milliseconds: " + (System.nanoTime() - executionStartTime) / 1000000);
+
             writer.close();
         } catch (Exception e) {
             error("flushing to file", e);
