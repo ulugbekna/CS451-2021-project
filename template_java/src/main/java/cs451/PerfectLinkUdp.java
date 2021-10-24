@@ -19,9 +19,7 @@ import static cs451.Log.*;
 /*
  * TODO: write tests
  * TODO: profile
- * TODO: better serde
  * TODO: reuse byte[] when can when sending packets?
- * TODO: add interruption to while(true)
  * */
 public class PerfectLinkUdp {
     private static final int BUF_SZ = 128;
