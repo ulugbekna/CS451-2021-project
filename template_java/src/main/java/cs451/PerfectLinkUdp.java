@@ -29,24 +29,26 @@ public class PerfectLinkUdp {
     private static final int BUF_SZ = 128;
 
     /*
-    * DATA
-    * */
+     * DATA
+     * */
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
-    private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
-
-    /* Statistics data for debugging */
+    /*
+     * Statistics data for debugging */
     private final AtomicLong nAcksSent = new AtomicLong(0);
     private final AtomicLong nMsgPacksSent = new AtomicLong(0);
-
     private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
     private final AtomicLong nAckPacksRecvd = new AtomicLong(0);
 
+    /* HOOKS */
+    private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
+
+
     /*
-    * FUNCTIONALITY
-    * */
+     * FUNCTIONALITY
+     * */
     PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
         this.socket = socket;
         this.exec = exec;
@@ -67,20 +69,20 @@ public class PerfectLinkUdp {
     /*
      * Invariant: do not raise
      * */
-    public void sendPacketAndScheduleResend(MessagePacket msgPacket,
+    public void sendPacketAndScheduleResend(int messageId,
                                             DatagramPacket outPacket,
                                             int timeoutMs) {
         try {
-            trace("sendPacketUntilAck", "sending " + msgPacket + " to :" + outPacket.getPort()
-                    + " t/o : " + timeoutMs);
+            trace("sendPacketUntilAck",
+                    "sending message (id: " + messageId + ") to :" + outPacket.getPort() + " t/o: " + timeoutMs);
 
             sendPacketOrFailSilently(socket, outPacket); // fail silently because we anyway resend until an ack is recvd
 
             var infResend = exec.schedule(
-                    () -> sendPacketAndScheduleResend(msgPacket, outPacket, timeoutMs * 2),
+                    () -> sendPacketAndScheduleResend(messageId, outPacket, timeoutMs * 2),
                     timeoutMs, TimeUnit.MILLISECONDS);
 
-            ackSyncTbl.set(outPacket.getPort(), msgPacket.messageId, infResend);
+            ackSyncTbl.set(outPacket.getPort(), messageId, infResend);
         } catch (Throwable e) {
             error("couldn't send a message packet from perfect links config", e);
         }
