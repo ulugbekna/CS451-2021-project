@@ -8,10 +8,11 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import static cs451.Log.*;
@@ -22,22 +23,40 @@ import static cs451.Log.*;
  * TODO: reuse byte[] when can when sending packets?
  * */
 public class PerfectLinkUdp {
+    /*
+     * CONSTANTS
+     * */
     private static final int BUF_SZ = 128;
+
+    /*
+    * DATA
+    * */
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
     private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
 
+    /* Statistics data for debugging */
+    private final AtomicLong nAcksSent = new AtomicLong(0);
+    private final AtomicLong nMsgPacksSent = new AtomicLong(0);
+
+    private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
+    private final AtomicLong nAckPacksRecvd = new AtomicLong(0);
+
+    /*
+    * FUNCTIONALITY
+    * */
     PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
         this.socket = socket;
         this.exec = exec;
         ackSyncTbl = new AckSyncTbl();
-        seenMsgs = new ConcurrentHashMap<>(128);
+        seenMsgs = new ConcurrentHashMap<>(2048);
     }
 
     private void sendPacketOrFailSilently(DatagramSocket socket, DatagramPacket outPacket) {
         try {
+            nMsgPacksSent.incrementAndGet();
             socket.send(outPacket);
         } catch (Throwable e) {
             // any failure in sending a packet should be logged,
@@ -88,6 +107,7 @@ public class PerfectLinkUdp {
         var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
+            nAcksSent.incrementAndGet();
             trace("processIncomingRequests",
                     "sending an ack: AckPacket{ senderId = " + packet.senderId + "; Id = " + packet.messageId);
         } catch (IOException e) {
@@ -112,8 +132,10 @@ public class PerfectLinkUdp {
         try {
             trace("processIncomingPacket", "received " + packet);
             if (packet instanceof AckPacket) {
+                nAckPacksRecvd.incrementAndGet();
                 processIncomingAckPacket((AckPacket) packet, fromPort);
             } else if (packet instanceof MessagePacket) {
+                nMsgPacksRecvd.incrementAndGet();
                 processIncomingMessagePacket((MessagePacket) packet, fromIP, fromPort);
             } else {
                 assert false; /* a packet MUST be either AckPacket or MessagePacket} */
@@ -127,25 +149,43 @@ public class PerfectLinkUdp {
     /*
      * Listen to a socket and submit tasks to schedule incoming packets
      *
-     * Note: this fn is blocking
-     *
-     * Invariant: note that we reuse `recvBuf`, so this function should NOT be called concurrently
+     * Assumptions:
+     * - assumes that an `IOException` thrown from `socket.receive()` means that the socket was closed
+     * Notes:
+     * - this fn is blocking
      * */
     public void listenToAndHandleIncomingPackets() {
-        byte[] recvBuf = new byte[BUF_SZ];
-        DatagramPacket inputPacket = new DatagramPacket(recvBuf, recvBuf.length);
-        info("Starting to wait for a client to connect...");
+        try {
+            byte[] recvBuf = new byte[BUF_SZ];
+            DatagramPacket inputPacket = new DatagramPacket(recvBuf, recvBuf.length);
+            info("Starting to wait for a client to connect...");
 
-        while (true) { // TODO: add support for interruption
-            try {
-                socket.receive(inputPacket);
+            while (true) { // TODO: add support for interruption
+                try {
+                    socket.receive(inputPacket);
 
-                var packet = PacketCodec.deserialize(recvBuf, inputPacket.getLength());
+                    var packet = PacketCodec.deserialize(recvBuf, inputPacket.getLength());
 
-                exec.submit(() -> processIncomingPacket(packet, inputPacket.getAddress(), inputPacket.getPort()));
-            } catch (IOException e) {
-                error("on receive: sending an ack", e);
+                    exec.submit(() -> processIncomingPacket(packet, inputPacket.getAddress(), inputPacket.getPort()));
+                } catch (SocketException e) {
+                    var msg = e.getMessage();
+                    if (msg.equals("Socket closed")) {
+                        info(
+                                "sent packs\n" +
+                                        "  msg: " + nMsgPacksSent + "\n" +
+                                        "  ack: " + nAcksSent + "\n" +
+                                        "received packs\n" +
+                                        "  msg: " + nMsgPacksRecvd + "\n" +
+                                        "  ack: " + nAckPacksRecvd + "\n"
+                        );
+                        break;
+                    }
+                } catch (IOException e) {
+                    error("on receive: sending an ack", e);
+                }
             }
+        } catch (Exception e) {
+            error("receiver", e);
         }
     }
 
