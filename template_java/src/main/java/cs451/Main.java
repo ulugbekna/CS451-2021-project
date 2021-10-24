@@ -1,6 +1,5 @@
 package cs451;
 
-import cs451.packets.MessagePacket;
 import cs451.packets.PacketCodec;
 
 import java.io.BufferedWriter;
@@ -147,7 +146,6 @@ public class Main {
                 for (int msgId = firstMsgId;
                      msgId < firstMsgId + config.nMessages;
                      msgId = myNode.msgUid.incrementAndGet()) {
-                    var msgPacket = new MessagePacket(myNode.me.id, msgId, String.valueOf(msgId)); // TODO: remove
                     var outBuf = new byte[SEND_BUF_SZ];
                     var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, myNode.me.id, msgId,
                             String.valueOf(msgId));
@@ -155,7 +153,7 @@ public class Main {
                     var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerReceiver.addr, peerReceiver.port);
                     var event = "b " + msgId;
                     eventLog.add(event);
-                    link.sendPacketAndScheduleResend(msgPacket, outPacket, INITIAL_RESEND_TIMEOUT);
+                    link.sendPacketAndScheduleResend(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
                 }
             }
         } catch (Exception e) {
