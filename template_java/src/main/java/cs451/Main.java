@@ -142,10 +142,10 @@ public class Main {
                 if (config.hostId == myNode.me.id)
                     continue; // don't send to myself
 
-                final var firstMsgId = myNode.msgUid.get();
-                for (int msgId = firstMsgId;
-                     msgId < firstMsgId + config.nMessages;
-                     msgId = myNode.msgUid.incrementAndGet()) {
+                final var firstMsgId = myNode.msgUid;
+                final var lastMsgIdPlusOne = firstMsgId + config.nMessages;
+                myNode.msgUid = lastMsgIdPlusOne;
+                for (int msgId = firstMsgId; msgId < lastMsgIdPlusOne; ++msgId) {
                     var outBuf = new byte[SEND_BUF_SZ];
                     var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, myNode.me.id, msgId,
                             String.valueOf(msgId));
