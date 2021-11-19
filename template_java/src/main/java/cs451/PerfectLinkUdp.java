@@ -27,6 +27,7 @@ public class PerfectLinkUdp {
      * CONSTANTS
      * */
     private static final int BUF_SZ = 128;
+    private static final int TIMEOUT_MULTIPLICATION_COEFF = 2;
 
     /*
      * DATA
@@ -71,17 +72,16 @@ public class PerfectLinkUdp {
      *
      * Invariant: do not raise
      * */
-    public void sendPacketAndScheduleResend(int messageId,
-                                            DatagramPacket outPacket,
-                                            int timeoutMs) {
+    public void sendMsg(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
-            trace("sendPacketUntilAck",
-                    "sending message (id: " + messageId + ") to :" + outPacket.getPort() + " t/o: " + timeoutMs);
+            trace("sendMsg",
+                    "sending message (id: " + messageId + ") to :" +
+                            outPacket.getPort() + " with timeout: " + timeoutMs);
 
-            sendPacketOrFailSilently(socket, outPacket); // fail silently because we anyway resend until an ack is recvd
+            sendPacketOrFailSilently(socket, outPacket); // fail silently as we anyway resend until an ack is recvd
 
             var infResend = exec.schedule(
-                    () -> sendPacketAndScheduleResend(messageId, outPacket, timeoutMs * 2),
+                    () -> sendMsg(messageId, outPacket, timeoutMs * TIMEOUT_MULTIPLICATION_COEFF),
                     timeoutMs, TimeUnit.MILLISECONDS);
 
             ackSyncTbl.set(outPacket.getPort(), messageId, infResend);

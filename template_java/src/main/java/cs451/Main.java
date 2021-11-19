@@ -153,7 +153,7 @@ public class Main {
                     var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerReceiver.addr, peerReceiver.port);
                     var event = "b " + msgId;
                     eventLog.add(event);
-                    link.sendPacketAndScheduleResend(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
+                    link.sendMsg(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
                 }
             }
         } catch (Exception e) {
