@@ -35,8 +35,8 @@ public class PerfectLinkUdp {
     private final ScheduledExecutorService exec;
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
-    /*
-     * Statistics data for debugging */
+
+    /* Statistical data for debugging */
     private final AtomicLong nAcksSent = new AtomicLong(0);
     private final AtomicLong nMsgPacksSent = new AtomicLong(0);
     private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
@@ -67,6 +67,8 @@ public class PerfectLinkUdp {
     }
 
     /*
+     * Sends a packet, schedules its resend and puts the future corresponding to the resend to the `ackSyncTbl`.
+     *
      * Invariant: do not raise
      * */
     public void sendPacketAndScheduleResend(int messageId,
@@ -88,6 +90,9 @@ public class PerfectLinkUdp {
         }
     }
 
+    /*
+     * Cancels a scheduled resend in `ackSyncTbl`.
+     * */
     private void processIncomingAckPacket(AckPacket ackPacket, int fromPort) {
         // stop infinite resending of the packet, since received an ack for it
         var infResend = ackSyncTbl.retrieve(fromPort, ackPacket.messageId);
@@ -96,7 +101,12 @@ public class PerfectLinkUdp {
         }
     }
 
-    private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) throws IOException {
+    /*
+     * "Deliver" if the message packet hasn't been seen yet.
+     *
+     * Best-effort send an `ack` packet for the received message.
+     * */
+    private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) {
         seenMsgs.computeIfAbsent(packet, (p) -> {
             onDeliverCallback.accept(packet);
             return true;
@@ -110,8 +120,8 @@ public class PerfectLinkUdp {
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
             nAcksSent.incrementAndGet();
-            trace("processIncomingRequests",
-                    "sending an ack: AckPacket{ senderId = " + packet.senderId + "; Id = " + packet.messageId);
+            trace("processIncomingMessagePacket",
+                    "send: Ack { senderId = " + packet.senderId + "; Id = " + packet.messageId);
         } catch (IOException e) {
             warn("couldn't send ack to " +
                     fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
@@ -140,7 +150,7 @@ public class PerfectLinkUdp {
                 nMsgPacksRecvd.incrementAndGet();
                 processIncomingMessagePacket((MessagePacket) packet, fromIP, fromPort);
             } else {
-                assert false; /* a packet MUST be either AckPacket or MessagePacket} */
+                error("incorrect packet: it's neither a msg nor an ack packet");
             }
         } catch (Exception e) {
             error("processing incoming packet", e);
@@ -193,9 +203,5 @@ public class PerfectLinkUdp {
 
     public void registerOnDeliverCallback(Consumer<MessagePacket> cb) {
         onDeliverCallback = cb;
-    }
-
-    public void close() {
-
     }
 }
