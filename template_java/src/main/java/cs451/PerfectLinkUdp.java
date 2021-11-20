@@ -109,13 +109,12 @@ public class PerfectLinkUdp {
     private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) {
         seenMsgs.computeIfAbsent(packet, (p) -> {
             onDeliverCallback.accept(packet);
-            return true;
+            return true; // we use `seenMsgs` as a Set, so we don't really care about this returned value
         });
 
         // try sending an ack once,
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
-        // TODO: can I optimize byte[] use ?
-        byte[] packetBytes = new byte[9];
+        byte[] packetBytes = new byte[9]; // TODO: optimize by predeclaring
         var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
@@ -137,8 +136,6 @@ public class PerfectLinkUdp {
      *   so we should stop resending it
      * 2. MessagePacket
      *   A peer sent us a message packet, so we try sending an ack for it to that peer
-     *
-     * TODO: handle "delivery"
      * */
     private void processIncomingPacket(Object packet, InetAddress fromIP, int fromPort) {
         try {
@@ -201,6 +198,7 @@ public class PerfectLinkUdp {
         }
     }
 
+    // TODO: replacing registering with passing it in constructor
     public void registerOnDeliverCallback(Consumer<MessagePacket> cb) {
         onDeliverCallback = cb;
     }
