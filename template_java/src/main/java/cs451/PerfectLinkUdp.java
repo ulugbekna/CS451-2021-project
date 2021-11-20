@@ -29,6 +29,7 @@ public class PerfectLinkUdp {
      * */
     private static final int BUF_SZ = 128;
     private static final int TIMEOUT_MULTIPLICATION_COEFF = 2;
+    private static final int SEEN_MSGS_TBL_INIT_SZ = 2048;
 
     /*
      * DATA
@@ -55,7 +56,7 @@ public class PerfectLinkUdp {
         this.socket = socket;
         this.exec = exec;
         ackSyncTbl = new AckSyncTbl();
-        seenMsgs = new ConcurrentHashMap<>(2048);
+        seenMsgs = new ConcurrentHashMap<>(SEEN_MSGS_TBL_INIT_SZ);
     }
 
     private void sendPacketOrFailSilently(DatagramSocket socket, DatagramPacket outPacket) {
