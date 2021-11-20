@@ -21,6 +21,12 @@ public class Constants {
     /*
      * Constants introduced by Ulugbek
      * */
+
     public static final int SEND_BUF_SZ = 128;
     public static final int INITIAL_RESEND_TIMEOUT = 200; // milliseconds
+
+    /**
+     * serialized AckPacket size in bytes
+     */
+    public static final int ACK_PACK_SZ = 9;
 }

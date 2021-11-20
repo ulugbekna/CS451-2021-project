@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import static cs451.Constants.ACK_PACK_SZ;
 import static cs451.Log.*;
 
 /*
@@ -114,7 +115,7 @@ public class PerfectLinkUdp {
 
         // try sending an ack once,
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
-        byte[] packetBytes = new byte[9]; // TODO: optimize by predeclaring
+        byte[] packetBytes = new byte[ACK_PACK_SZ]; // TODO: optimize by predeclaring
         var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
