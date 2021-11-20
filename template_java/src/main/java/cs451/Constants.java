@@ -17,4 +17,10 @@ public class Constants {
 
     // indexes for config
     public static final int CONFIG_VALUE = 6;
+
+    /*
+     * Constants introduced by Ulugbek
+     * */
+    public static final int SEND_BUF_SZ = 128;
+    public static final int INITIAL_RESEND_TIMEOUT = 200; // milliseconds
 }

@@ -1,11 +1,12 @@
 package cs451;
 
-import cs451.packets.PacketCodec;
+import cs451.packets.MessagePacket;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.net.*;
-import java.util.Arrays;
+import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -17,8 +18,6 @@ public class Main {
     /*
      * CONSTANTS
      * */
-    final static int INITIAL_RESEND_TIMEOUT = 200;
-    final static int SEND_BUF_SZ = 128;
     final static int THREAD_POOL_SZ = 1024;
 
     /*
@@ -64,11 +63,14 @@ public class Main {
         Runtime.getRuntime().addShutdownHook(new Thread(Main::handleSignal));
     }
 
-    public static void main(String[] args) throws UnknownHostException, SocketException {
+    public static void main(String[] args) throws IOException {
         Log.NONE();
 
         Parser parser = new Parser(args);
         parser.parse();
+        var configParser = new ConfigParser();
+        configParser.populate(parser.config());
+        var nMsgsToBroadcast = configParser.parseFifoBroadcastConfig();
 
         initSignalHandlers();
 
@@ -111,27 +113,20 @@ public class Main {
         final var socket = new DatagramSocket(myNode.me.port, myNode.me.addr);
         globalSocket = socket;
 
-        var link = new PerfectLinkUdp(socket, exec);
-        link.registerOnDeliverCallback(
-                messagePacket -> eventLog.add("d " + messagePacket.senderId + " " + messagePacket.messageId));
+        var bebroadcast = new BestEffortBroadcastUdp(myNode.me.id, socket, exec,
+                (MessagePacket m) -> eventLog.add("d " + m.senderId + " " + m.messageId));
 
-        exec.submit(() -> sendByPerfectLinksConfig(link, parser, myNode));
+        exec.submit(() -> {
+            for (int i = 1; i <= nMsgsToBroadcast; ++i) {
+                eventLog.add("b " + i);
+                bebroadcast.broadcast(i, myNode.peers);
+            }
+        });
 
-        link.listenToAndHandleIncomingPackets(); // beware: blocks the thread
+        bebroadcast.blockingListen();
     }
 
-    private static ConfigParser.PerfectLinksConfig[] parsePerfectLinksConfig(Parser parser) {
-        var configParser = new ConfigParser();
-        configParser.populate(parser.config());
-
-        try {
-            return configParser.parsePerfectLinks();
-        } catch (Exception e) {
-            error("error parsing perfect links config file", e);
-            return null;
-        }
-    }
-
+    /*
     private static void sendByPerfectLinksConfig(PerfectLinkUdp link, Parser parser, MyNode myNode) {
         try {
             var configs = parsePerfectLinksConfig(parser);
@@ -160,4 +155,5 @@ public class Main {
             error("", e);
         }
     }
+    */
 }

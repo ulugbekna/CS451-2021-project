@@ -1,6 +1,8 @@
 package cs451;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -17,6 +19,16 @@ public class ConfigParser {
 
     public String getPath() {
         return path;
+    }
+
+    /*
+     * Config file format expected - A file containing a single integer -
+     * the number of messages to broadcast
+     * */
+    public int parseFifoBroadcastConfig() throws IOException {
+        BufferedReader r = new BufferedReader(new FileReader(path));
+        var fstLine = r.readLine();
+        return Integer.parseInt(fstLine);
     }
 
     public PerfectLinksConfig[] parsePerfectLinks() throws IOException {
