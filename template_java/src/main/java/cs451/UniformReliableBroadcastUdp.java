@@ -61,11 +61,8 @@ public class UniformReliableBroadcastUdp {
 
     void onBebDeliver(MessagePacket bebDeliveredMsg) {
         // TODO: useless allocation? ugly piece of code
-        var originalMsg = new MessagePacket(
-                bebDeliveredMsg.authorId,
-                bebDeliveredMsg.messageId,
-                bebDeliveredMsg.authorId,
-                bebDeliveredMsg.message);
+        var originalMsg =
+                new MessagePacket.Builder(bebDeliveredMsg).withSenderId(bebDeliveredMsg.authorId).build();
 
         ack.compute(originalMsg, (MessagePacket _m, HashSet<Integer> currentSetOrNull) -> {
             var set = currentSetOrNull != null ? currentSetOrNull : new HashSet<Integer>();
@@ -76,11 +73,7 @@ public class UniformReliableBroadcastUdp {
         if (pending.put(originalMsg, true) == null) {
             // relay or broadcast?
             // with relay node 1 delivers, which means node 2 isn't getting its own ack
-            var msgFromMe = new MessagePacket(
-                    myProcId,
-                    bebDeliveredMsg.messageId,
-                    bebDeliveredMsg.authorId,
-                    bebDeliveredMsg.message);
+            var msgFromMe = new MessagePacket.Builder(bebDeliveredMsg).withSenderId(myProcId).build();
             exec.submit(() -> beb.broadcast(msgFromMe, peers));
         }
     }
