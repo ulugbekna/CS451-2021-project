@@ -1,5 +1,7 @@
 package cs451.packets;
 
+import cs451.Log;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -8,12 +10,17 @@ public class PacketCodec {
     /*
      *  [ack/msg pack - 1 byte][sender ID int serialized - 4 bytes][message ID int serialized - 4 bytes]{optional message if it's a msg pck}
      * */
-    private static final byte ACK_PACKET_HEADER_BYTE = 0;
-    private static final byte MESSAGE_PACKET_HEADER_BYTE = 1;
-    private static final int PACKET_HEADER_BYTE_IDX = 0;
+    private static final byte PACKET_KIND_ACK = 0;
+    private static final byte PACKET_KIND_MSG = 1;
+
+    private static final int PACKET_HEADER_KIND_IDX = 0;
     private static final int PACKET_HEADER_SENDER_ID_IDX = 1;
-    private static final int PACKET_HEADER_MESSAGE_ID_IDX = 5;
-    private static final int PACKET_MESSAGE_IDX = 9;
+    private static final int PACKET_HEADER_MESSAGE_ID_IDX = PACKET_HEADER_SENDER_ID_IDX + Integer.BYTES;
+
+    // MessagePacket-only
+
+    private static final int PACKET_HEADER_AUTHOR_ID_IDX = PACKET_HEADER_MESSAGE_ID_IDX + Integer.BYTES;
+    private static final int PACKET_MESSAGE_IDX = PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES;
 
     /* deserializes an integer from buf[offset:offset+4] right side of range exclusive */
     private static int getIntFromBytes(byte[] buf, int offset) {
@@ -37,30 +44,33 @@ public class PacketCodec {
         assert len > 8;
         var msgId = getIntFromBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX);
         var senderId = getIntFromBytes(buf, PACKET_HEADER_SENDER_ID_IDX);
-        switch (buf[PACKET_HEADER_BYTE_IDX]) {
-            case ACK_PACKET_HEADER_BYTE:
+        switch (buf[PACKET_HEADER_KIND_IDX]) {
+            case PACKET_KIND_ACK:
                 return new AckPacket(senderId, msgId);
-            case MESSAGE_PACKET_HEADER_BYTE:
-                return new MessagePacket(senderId, msgId, new String(
-                        Arrays.copyOfRange(buf, PACKET_MESSAGE_IDX, len)));
+            case PACKET_KIND_MSG:
+                var authorId = getIntFromBytes(buf, PACKET_HEADER_AUTHOR_ID_IDX);
+                return new MessagePacket(senderId, msgId, authorId,
+                        new String(Arrays.copyOfRange(buf, PACKET_MESSAGE_IDX, len)));
             default:
+                Log.error("error in deserialization");
                 throw new RuntimeException("Incorrect serialized format received");
         }
     }
 
     public static int serializeAckPacket(byte[] buf, int senderId, int messageId) {
-        buf[PACKET_HEADER_BYTE_IDX] = ACK_PACKET_HEADER_BYTE;
+        buf[PACKET_HEADER_KIND_IDX] = PACKET_KIND_ACK;
         putIntToBytes(buf, PACKET_HEADER_SENDER_ID_IDX, senderId);
         putIntToBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX, messageId);
         return 9;
     }
 
-    public static int serializeMessagePacket(byte[] buf, int senderId, int messageId, String message) {
-        buf[PACKET_HEADER_BYTE_IDX] = MESSAGE_PACKET_HEADER_BYTE;
+    public static int serializeMessagePacket(byte[] buf, int senderId, int messageId, int authorId, String message) {
+        buf[PACKET_HEADER_KIND_IDX] = PACKET_KIND_MSG;
         putIntToBytes(buf, PACKET_HEADER_SENDER_ID_IDX, senderId);
         putIntToBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX, messageId);
+        putIntToBytes(buf, PACKET_HEADER_AUTHOR_ID_IDX, authorId);
         var messageBytes = message.getBytes(StandardCharsets.US_ASCII);
         System.arraycopy(messageBytes, 0, buf, PACKET_MESSAGE_IDX, messageBytes.length);
-        return 9 + messageBytes.length;
+        return PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES + messageBytes.length;
     }
 }

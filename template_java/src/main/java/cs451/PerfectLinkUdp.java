@@ -2,6 +2,7 @@ package cs451;
 
 import cs451.packets.AckPacket;
 import cs451.packets.MessagePacket;
+import cs451.packets.Packet;
 import cs451.packets.PacketCodec;
 
 import java.io.IOException;
@@ -39,7 +40,8 @@ public class PerfectLinkUdp {
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
 
-    /* Statistical data for debugging */
+    /* Statistical data for debugging
+     * TODO: move to a singleton object with these fields */
     private final AtomicLong nAcksSent = new AtomicLong(0);
     private final AtomicLong nMsgPacksSent = new AtomicLong(0);
     private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
@@ -139,7 +141,7 @@ public class PerfectLinkUdp {
      * 2. MessagePacket
      *   A peer sent us a message packet, so we try sending an ack for it to that peer
      * */
-    private void processIncomingPacket(Object packet, InetAddress fromIP, int fromPort) {
+    private void processIncomingPacket(Packet packet, InetAddress fromIP, int fromPort) {
         try {
             trace("processIncomingPacket", "received " + packet);
             if (packet instanceof AckPacket) {
@@ -159,6 +161,8 @@ public class PerfectLinkUdp {
 
     /*
      * Listen to a socket and submit tasks to schedule incoming packets
+     *  - AckPacket: stop resending
+     *  - MessagePacket: acknowledge
      *
      * Assumptions:
      * - assumes that an `IOException` thrown from `socket.receive()` means that the socket was closed

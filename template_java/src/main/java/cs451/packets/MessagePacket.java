@@ -6,11 +6,13 @@ public class MessagePacket extends Packet {
     /**
      * message content
      */
+    public final int authorId;
     public final String message;
 
-    public MessagePacket(int senderId, int msgId, String msg) {
+    public MessagePacket(int senderId, int msgId, int authorId, String msg) {
         super(senderId, msgId);
         this.message = msg;
+        this.authorId = authorId;
     }
 
     @Override
@@ -19,20 +21,21 @@ public class MessagePacket extends Packet {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         MessagePacket that = (MessagePacket) o;
-        return Objects.equals(message, that.message);
+        return authorId == that.authorId && Objects.equals(message, that.message);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), message);
+        return Objects.hash(super.hashCode(), authorId, message);
     }
 
     @Override
     public String toString() {
         return "MessagePacket{" +
-                "messageId=" + messageId +
-                ", message=" + message +
+                "authorId=" + authorId +
                 ", senderId=" + senderId +
+                ", messageId=" + messageId +
+                ", message='" + message + '\'' +
                 '}';
     }
 }

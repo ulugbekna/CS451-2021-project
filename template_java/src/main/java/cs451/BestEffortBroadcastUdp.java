@@ -32,14 +32,47 @@ public class BestEffortBroadcastUdp {
         plink.listenToAndHandleIncomingPackets(); // beware: blocks the thread
     }
 
-    void broadcast(int msgId, HashMap<Integer, Node> peers) {
-        onDeliverCallback.accept(new MessagePacket(myProcId, msgId, String.valueOf(msgId)));
-        peers.forEach((Integer procId, Node peerNode) -> {
-            var outBuf = new byte[SEND_BUF_SZ];
-            var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, myProcId, msgId,
-                    String.valueOf(msgId));
-            var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerNode.addr, peerNode.port);
+    /**
+     * Sends the given message `m` with the `senderId = myId` and `authorId` intact.
+     * <p>
+     * Differs from `broadcast` in that
+     * - it doesn't set `authorId = myId` but keeps intact the one set in `m`
+     * - doesn't deliver to itself
+     */
+    void relay(MessagePacket m, HashMap<Integer, Node> peers) {
+        var msgId = m.messageId;
+        var outBuf = new byte[SEND_BUF_SZ];
+        var nBytesWritten =
+                PacketCodec.serializeMessagePacket(outBuf,
+                        myProcId,
+                        msgId,
+                        m.authorId,
+                        String.valueOf(msgId));
+        var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten);
 
+        peers.forEach((Integer procId, Node peerNode) -> {
+            if (procId != m.authorId) {
+                outPacket.setAddress(peerNode.addr);
+                outPacket.setPort(peerNode.port);
+                plink.sendMsg(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
+            }
+        });
+    }
+
+    /*
+     * Broadcast a message with `senderId = myId` and `authorId = myId`.
+     * */
+    void broadcast(int msgId, HashMap<Integer, Node> peers) {
+        onDeliverCallback.accept(new MessagePacket(myProcId, msgId, myProcId, String.valueOf(msgId)));
+
+        var outBuf = new byte[SEND_BUF_SZ];
+        var nBytesWritten =
+                PacketCodec.serializeMessagePacket(outBuf, myProcId, msgId, myProcId, String.valueOf(msgId));
+        var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten);
+
+        peers.forEach((Integer procId, Node peerNode) -> {
+            outPacket.setAddress(peerNode.addr);
+            outPacket.setPort(peerNode.port);
             plink.sendMsg(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
         });
     }
