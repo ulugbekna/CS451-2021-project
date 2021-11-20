@@ -124,7 +124,7 @@ public class PerfectLinkUdp {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
             nAcksSent.incrementAndGet();
             trace("processIncomingMessagePacket",
-                    "send: Ack { senderId = " + packet.senderId + "; Id = " + packet.messageId);
+                    "send: Ack { senderId = " + packet.senderId + "; Id = " + packet.messageId + " }");
         } catch (IOException e) {
             warn("couldn't send ack to " +
                     fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
