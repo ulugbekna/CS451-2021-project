@@ -18,7 +18,7 @@ public class Main {
     /*
      * CONSTANTS
      * */
-    final static int THREAD_POOL_SZ = 1024;
+    final static int THREAD_POOL_SZ = 1024; // TODO: too many -- what can we do about this?
 
     /*
      DATA
@@ -36,6 +36,8 @@ public class Main {
     /*
      FUNCTIONALITY
      */
+
+    // FIXME: make sure this works as expected
     private static void handleSignal() {
         exec.shutdownNow();
 
