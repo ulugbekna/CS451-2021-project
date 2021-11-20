@@ -73,4 +73,8 @@ public class PacketCodec {
         System.arraycopy(messageBytes, 0, buf, PACKET_MESSAGE_IDX, messageBytes.length);
         return PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES + messageBytes.length;
     }
+
+    public static int serializeMessagePacket(byte[] buf, MessagePacket m) {
+        return serializeMessagePacket(buf, m.senderId, m.messageId, m.authorId, m.message);
+    }
 }

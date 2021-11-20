@@ -105,20 +105,20 @@ public class PerfectLinkUdp {
         }
     }
 
-    /*
+    /**
      * "Deliver" if the message packet hasn't been seen yet.
-     *
+     * <p>
      * Best-effort send an `ack` packet for the received message.
-     * */
+     */
     private void processIncomingMessagePacket(MessagePacket packet, InetAddress fromIP, int fromPort) {
         seenMsgs.computeIfAbsent(packet, (p) -> {
-            onDeliverCallback.accept(packet);
+            onDeliverCallback.accept(packet); // TODO: do this outside of compute atomic operation
             return true; // we use `seenMsgs` as a Set, so we don't really care about this returned value
         });
 
         // try sending an ack once,
         // if not successful - give up (because the sender will keep sending the message packet until it gets an ack
-        byte[] packetBytes = new byte[ACK_PACK_SZ]; // TODO: optimize by predeclaring
+        byte[] packetBytes = new byte[ACK_PACK_SZ]; // TODO: optimize by predeclaring ?
         var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));

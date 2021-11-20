@@ -115,17 +115,23 @@ public class Main {
         final var socket = new DatagramSocket(myNode.me.port, myNode.me.addr);
         globalSocket = socket;
 
-        var bebroadcast = new BestEffortBroadcastUdp(myNode.me.id, socket, exec,
-                (MessagePacket m) -> eventLog.add("d " + m.senderId + " " + m.messageId));
+        var urb = new UniformReliableBroadcastUdp(
+                myNode.me.id,
+                myNode.peers,
+                socket,
+                exec,
+                (MessagePacket m) ->
+                        eventLog.add("d " + m.authorId + " " + m.messageId));
 
         exec.submit(() -> {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
                 eventLog.add("b " + i);
-                bebroadcast.broadcast(i, myNode.peers);
+                var msg = new MessagePacket(myNode.me.id, i, myNode.me.id, String.valueOf(i));
+                urb.broadcast(msg, myNode.peers);
             }
         });
 
-        bebroadcast.blockingListen();
+        urb.blockingListen();
     }
 
     /*
