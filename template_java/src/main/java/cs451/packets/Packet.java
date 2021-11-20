@@ -3,12 +3,19 @@ package cs451.packets;
 import java.util.Objects;
 
 public abstract class Packet {
+    /**
+     * original message author's process ID: 1 - n, where `n` is the total number of procs
+     */
     public final int senderId;
+
+    /**
+     * message sequence ID
+     */
     public final int messageId;
 
-    protected Packet(int senderId, int id) {
+    protected Packet(int senderId, int msgId) {
         this.senderId = senderId;
-        this.messageId = id;
+        this.messageId = msgId;
     }
 
     @Override

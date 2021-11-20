@@ -128,7 +128,7 @@ public class PerfectLinkUdp {
     }
 
     /*
-     * Invariant: Must not throw since runs in the executor
+     * INVARIANT: Must NOT throw -- runs in executor
      *
      * We handle two types of packets, ie all kinds of packets that exist
      * 1. AckPacket

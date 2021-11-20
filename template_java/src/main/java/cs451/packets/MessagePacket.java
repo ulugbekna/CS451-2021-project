@@ -3,6 +3,9 @@ package cs451.packets;
 import java.util.Objects;
 
 public class MessagePacket extends Packet {
+    /**
+     * message content
+     */
     public final String message;
 
     public MessagePacket(int senderId, int id, String message) {
