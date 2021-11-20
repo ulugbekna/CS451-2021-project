@@ -8,9 +8,9 @@ public class MessagePacket extends Packet {
      */
     public final String message;
 
-    public MessagePacket(int senderId, int id, String message) {
-        super(senderId, id);
-        this.message = message;
+    public MessagePacket(int senderId, int msgId, String msg) {
+        super(senderId, msgId);
+        this.message = msg;
     }
 
     @Override
