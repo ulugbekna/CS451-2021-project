@@ -19,8 +19,6 @@ public class UniformReliableBroadcastUdp {
 
     private final Consumer<MessagePacket> onDeliverCallback;
     private final ConcurrentHashMap<MessagePacket, Boolean> delivered;
-    //    private final TwoLayerTbl<
-//            /* authorId */ Integer, /* messageId */ Integer, /* used as set, so doesn't matter */ Boolean> pending;
     private final ConcurrentHashMap<MessagePacket, Boolean> pending;
     private final ConcurrentHashMap<MessagePacket, HashSet<Integer /* id */>> ack;
 
@@ -35,7 +33,6 @@ public class UniformReliableBroadcastUdp {
         this.onDeliverCallback = onDeliverCallback;
         this.exec = exec;
         delivered = new ConcurrentHashMap<>();
-//        pending = new TwoLayerTbl<>(256, 256);
         pending = new ConcurrentHashMap<>(1024);
         ack = new ConcurrentHashMap<>();
         beb = new BestEffortBroadcastUdp(myProcId, socket, exec, this::onBebDeliver);
