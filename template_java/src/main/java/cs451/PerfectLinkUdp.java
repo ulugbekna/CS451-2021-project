@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import static cs451.Constants.ACK_PACK_SZ;
+import static cs451.Constants.SEND_RECV_BUF_SZ;
 import static cs451.Log.*;
 
 /*
@@ -28,7 +29,6 @@ public class PerfectLinkUdp {
     /*
      * CONSTANTS
      * */
-    private static final int BUF_SZ = 128;
     private static final int TIMEOUT_MULTIPLICATION_COEFF = 2;
     private static final int SEEN_MSGS_TBL_INIT_SZ = 2048;
 
@@ -171,7 +171,7 @@ public class PerfectLinkUdp {
      * */
     public void listenToAndHandleIncomingPackets() {
         try {
-            byte[] recvBuf = new byte[BUF_SZ];
+            byte[] recvBuf = new byte[SEND_RECV_BUF_SZ];
             DatagramPacket inputPacket = new DatagramPacket(recvBuf, recvBuf.length);
             info("Starting to wait for a client to connect...");
 

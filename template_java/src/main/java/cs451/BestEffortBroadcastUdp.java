@@ -10,7 +10,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
 import static cs451.Constants.INITIAL_RESEND_TIMEOUT;
-import static cs451.Constants.SEND_BUF_SZ;
+import static cs451.Constants.SEND_RECV_BUF_SZ;
 
 public class BestEffortBroadcastUdp {
     private final PerfectLinkUdp plink;
@@ -38,7 +38,7 @@ public class BestEffortBroadcastUdp {
     void broadcast(MessagePacket msg, HashMap<Integer, Node> peers) {
         onDeliverCallback.accept(msg);
 
-        var outBuf = new byte[SEND_BUF_SZ];
+        var outBuf = new byte[SEND_RECV_BUF_SZ];
         var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, msg);
 
         peers.forEach((_procId, peerNode) -> {
