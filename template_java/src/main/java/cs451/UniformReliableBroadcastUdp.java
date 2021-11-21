@@ -82,7 +82,7 @@ public class UniformReliableBroadcastUdp {
         beb.blockingListen();
     }
 
-    void broadcast(MessagePacket msg, HashMap<Integer, Node> peers) {
+    void broadcast(MessagePacket msg) {
         pending.put(msg, true);
         beb.broadcast(msg, peers);
     }

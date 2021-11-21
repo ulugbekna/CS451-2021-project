@@ -121,7 +121,7 @@ public class FifoBroadcast {
     }
 
     void broadcast(MessagePacket msg) {
-        urb.broadcast(msg, peers);
+        urb.broadcast(msg);
     }
 
     void blockingListen() {
