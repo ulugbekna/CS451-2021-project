@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class UniformReliableBroadcastUdp {
@@ -32,28 +31,13 @@ public class UniformReliableBroadcastUdp {
         this.peers = peers;
         this.onDeliverCallback = onDeliverCallback;
         this.exec = exec;
+
+        beb = new BestEffortBroadcastUdp(myProcId, socket, exec, this::onBebDeliver);
+
+        /* Internal State: */
         delivered = new ConcurrentHashMap<>();
         pending = new ConcurrentHashMap<>(1024);
         ack = new ConcurrentHashMap<>();
-        beb = new BestEffortBroadcastUdp(myProcId, socket, exec, this::onBebDeliver);
-
-        exec.scheduleAtFixedRate(this::tryDelivering, 20, 20, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Used for periodically checking whether any of the bebDelivered messages got necessary number of relays
-     */
-    void tryDelivering() {
-        pending.forEach((MessagePacket msg, Boolean v) -> {
-            if (canDeliver(msg) && delivered.put(msg, true) == null) {
-                onDeliverCallback.accept(msg);
-            }
-        });
-    }
-
-    boolean canDeliver(MessagePacket m) {
-        var set = ack.get(m);
-        return set != null && set.size() > (nNodes / 2);
     }
 
     void onBebDeliver(MessagePacket bebDeliveredMsg) {
@@ -64,6 +48,13 @@ public class UniformReliableBroadcastUdp {
         ack.compute(originalMsg, (MessagePacket _m, HashSet<Integer> currentSetOrNull) -> {
             var set = currentSetOrNull != null ? currentSetOrNull : new HashSet<Integer>();
             set.add(bebDeliveredMsg.senderId);
+
+            // here we deliver as soon as we can
+            // note that we _have_ to check that we haven't delivered because ack can be incremented
+            // even after the ack count > nNodes/2, so we don't want to deliver every time
+            if (set.size() > (nNodes / 2) && delivered.put(originalMsg, true) == null)
+                onDeliverCallback.accept(originalMsg);
+
             return set;
         });
 
