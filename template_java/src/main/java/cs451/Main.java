@@ -132,35 +132,4 @@ public class Main {
 
         fifob.blockingListen();
     }
-
-    /*
-    private static void sendByPerfectLinksConfig(PerfectLinkUdp link, Parser parser, MyNode myNode) {
-        try {
-            var configs = parsePerfectLinksConfig(parser);
-            assert configs != null;
-            trace(Arrays.toString(configs));
-
-            for (var config : configs) {
-                if (config.hostId == myNode.me.id)
-                    continue; // don't send to myself
-
-                final var firstMsgId = myNode.msgUid;
-                final var lastMsgIdPlusOne = firstMsgId + config.nMessages;
-                myNode.msgUid = lastMsgIdPlusOne;
-                for (int msgId = firstMsgId; msgId < lastMsgIdPlusOne; ++msgId) {
-                    var outBuf = new byte[SEND_BUF_SZ];
-                    var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, myNode.me.id, msgId,
-                            String.valueOf(msgId));
-                    var peerReceiver = myNode.peers.get(config.hostId);
-                    var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerReceiver.addr, peerReceiver.port);
-                    var event = "b " + msgId;
-                    eventLog.add(event);
-                    link.sendMsg(msgId, outPacket, INITIAL_RESEND_TIMEOUT);
-                }
-            }
-        } catch (Exception e) {
-            error("", e);
-        }
-    }
-    */
 }
