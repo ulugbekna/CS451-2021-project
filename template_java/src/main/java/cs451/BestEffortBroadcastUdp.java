@@ -21,13 +21,9 @@ public class BestEffortBroadcastUdp {
                                   Consumer<MessagePacket> onDeliverCallback) {
         this.myProcId = myProcId;
         this.onDeliverCallback = onDeliverCallback;
-        plink = new PerfectLinkUdp(socket, exec);
-        plink.registerOnDeliverCallback(onDeliverCallback);
+        plink = new PerfectLinkUdp(socket, exec, onDeliverCallback);
     }
 
-    /*
-     * Blocks!
-     * */
     void blockingListen() {
         plink.listenToAndHandleIncomingPackets(); // beware: blocks the thread
     }

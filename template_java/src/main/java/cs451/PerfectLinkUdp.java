@@ -47,16 +47,18 @@ public class PerfectLinkUdp {
     private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
     private final AtomicLong nAckPacksRecvd = new AtomicLong(0);
 
-    /* HOOKS */
-    private Consumer<MessagePacket> onDeliverCallback = (MessagePacket packet) -> {};
-
+    private final Consumer<MessagePacket> onDeliverCallback;
 
     /*
      * FUNCTIONALITY
      * */
-    PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec) {
+    PerfectLinkUdp(DatagramSocket socket, ScheduledExecutorService exec, Consumer<MessagePacket> onDeliverCallback) {
         this.socket = socket;
         this.exec = exec;
+        this.onDeliverCallback = onDeliverCallback;
+
+        /* Internal State: */
+
         ackSyncTbl = new AckSyncTbl();
         seenMsgs = new ConcurrentHashMap<>(SEEN_MSGS_TBL_INIT_SZ);
     }
@@ -202,10 +204,5 @@ public class PerfectLinkUdp {
         } catch (Exception e) {
             error("receiver", e);
         }
-    }
-
-    // TODO: replacing registering with passing it in constructor
-    public void registerOnDeliverCallback(Consumer<MessagePacket> cb) {
-        onDeliverCallback = cb;
     }
 }
