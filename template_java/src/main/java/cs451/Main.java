@@ -25,8 +25,7 @@ public class Main {
      */
     final static long executionStartTime = System.nanoTime();
     final static ScheduledExecutorService exec =
-            Executors.newScheduledThreadPool(
-                    THREAD_POOL_SZ /* `-1` because of main thread */);
+            Executors.newScheduledThreadPool(THREAD_POOL_SZ /* `-1` because of main thread */);
 
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
 
