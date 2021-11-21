@@ -115,7 +115,7 @@ public class Main {
         final var socket = new DatagramSocket(myNode.me.port, myNode.me.addr);
         globalSocket = socket;
 
-        var urb = new UniformReliableBroadcastUdp(
+        var fifob = new FifoBroadcast(
                 myNode.me.id,
                 myNode.peers,
                 socket,
@@ -127,11 +127,11 @@ public class Main {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
                 eventLog.add("b " + i);
                 var msg = new MessagePacket(myNode.me.id, i, myNode.me.id, String.valueOf(i));
-                urb.broadcast(msg, myNode.peers);
+                fifob.broadcast(msg);
             }
         });
 
-        urb.blockingListen();
+        fifob.blockingListen();
     }
 
     /*
