@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class FifoBroadcast {
@@ -46,7 +45,7 @@ public class FifoBroadcast {
 
     final HashMap<Integer, Node> peers;
 
-    final ConcurrentHashMap</* authorID */ Integer, AtomicInteger> expectedMsgIds;
+    final ConcurrentHashMap</* authorID */ Integer, Integer> expectedMsgIds;
     final ConcurrentHashMap</* authorID */ Integer, HashMap</* Msg ID */ Integer, MessagePacket>> pending;
 
     public FifoBroadcast(int myProcId, HashMap<Integer, Node> peers,
@@ -63,9 +62,9 @@ public class FifoBroadcast {
 
         // initialize expectedMsgIds
         expectedMsgIds = new ConcurrentHashMap<>(16);
-        expectedMsgIds.put(myProcId, new AtomicInteger(1));
+        expectedMsgIds.put(myProcId, 1);
         for (var peer : peers.keySet())
-            expectedMsgIds.put(peer, new AtomicInteger(1));
+            expectedMsgIds.put(peer, 1);
 
         // initialize pending
         pending = new ConcurrentHashMap<>(16);
@@ -82,7 +81,6 @@ public class FifoBroadcast {
     }
 
     void onUrbDeliver(MessagePacket msg) {
-        var atomicExpectedMsgId = expectedMsgIds.get(msg.authorId);
         var msgId = msg.messageId;
 
         /*
@@ -97,30 +95,29 @@ public class FifoBroadcast {
          *       now `msgId == expectedMsgId`, that's okay, we'll simply add the current message to `pending` and
          *       at some point later it will be delivered by our periodically running function
          * */
-
-        if (msgId == atomicExpectedMsgId.get()) {
-            onDeliverCallback.accept(msg); // ie call onDeliverCallback
-            // Note! we shouldn't increment the atomic before we deliver;
-            // ow, some other thread can deliver before we do
-            atomicExpectedMsgId.incrementAndGet();
-        } else {
-            pending.computeIfPresent(msg.authorId, (authorId, msgs) -> {
-                msgs.put(msg.messageId, msg);
-                return msgs;
-            });
-        }
+        expectedMsgIds.computeIfPresent(msg.authorId, (authorId, expectedMsgId) -> {
+            if (msgId == expectedMsgId) {
+                onDeliverCallback.accept(msg);
+                return expectedMsgId + 1;
+            } else {
+                pending.computeIfPresent(msg.authorId, (_authorId, msgs) -> {
+                    msgs.put(msg.messageId, msg);
+                    return msgs;
+                });
+                return expectedMsgId;
+            }
+        });
     }
 
     void checkPendingToDeliver() {
-        pending.forEach((authorId, msgsPending) -> {
-            var atomicExpectedMsgId = expectedMsgIds.get(authorId);
-            var expectedMsgId = atomicExpectedMsgId.get();
-            var msgOrNull = msgsPending.get(expectedMsgId);
-            if (msgOrNull != null) {
-                atomicExpectedMsgId.incrementAndGet();
-                exec.submit(() -> onDeliverCallback.accept(msgOrNull));
-            }
-        });
+        pending.forEach((authorId, msgsPending) ->
+                expectedMsgIds.computeIfPresent(authorId, (_authId, expectedMsgId) -> { // deadlock lurking ?
+                    var msgOrNull = msgsPending.get(expectedMsgId);
+                    if (msgOrNull != null) {
+                        onDeliverCallback.accept(msgOrNull);
+                        return expectedMsgId + 1;
+                    } else return expectedMsgId;
+                }));
     }
 
     void broadcast(MessagePacket msg) {
