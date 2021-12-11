@@ -35,7 +35,6 @@ public class Main {
      FUNCTIONALITY
      */
 
-    // FIXME: make sure this works as expected
     private static void handleSignal() {
         exec.shutdownNow();
 
