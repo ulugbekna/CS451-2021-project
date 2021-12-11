@@ -13,7 +13,6 @@ import java.net.SocketException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import static cs451.Constants.ACK_PACK_SZ;
@@ -40,12 +39,7 @@ public class PerfectLinkUdp {
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
 
-    /* Statistical data for debugging
-     * TODO: move to a singleton object with these fields */
-    private final AtomicLong nAcksSent = new AtomicLong(0);
-    private final AtomicLong nMsgPacksSent = new AtomicLong(0);
-    private final AtomicLong nMsgPacksRecvd = new AtomicLong(0);
-    private final AtomicLong nAckPacksRecvd = new AtomicLong(0);
+    private final PerfectLinkStats stats;
 
     private final Consumer<MessagePacket> onDeliverCallback;
 
@@ -61,11 +55,13 @@ public class PerfectLinkUdp {
 
         ackSyncTbl = new AckSyncTbl();
         seenMsgs = new ConcurrentHashMap<>(SEEN_MSGS_TBL_INIT_SZ);
+
+        stats = new PerfectLinkStats();
     }
 
     private void sendPacketOrFailSilently(DatagramSocket socket, DatagramPacket outPacket) {
         try {
-            nMsgPacksSent.incrementAndGet();
+            stats.msgPackSent();
             socket.send(outPacket);
         } catch (Throwable e) {
             // any failure in sending a packet should be logged,
@@ -124,7 +120,7 @@ public class PerfectLinkUdp {
         var nBytesWritten = PacketCodec.serializeAckPacket(packetBytes, packet.senderId, packet.messageId);
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
-            nAcksSent.incrementAndGet();
+            stats.ackSent();
             trace("processIncomingMessagePacket",
                     "send: Ack { senderId = " + packet.senderId + "; Id = " + packet.messageId + " }");
         } catch (IOException e) {
@@ -147,10 +143,10 @@ public class PerfectLinkUdp {
         try {
             trace("processIncomingPacket", "received " + packet);
             if (packet instanceof AckPacket) {
-                nAckPacksRecvd.incrementAndGet();
+                stats.ackRecvd();
                 processIncomingAckPacket((AckPacket) packet, fromPort);
             } else if (packet instanceof MessagePacket) {
-                nMsgPacksRecvd.incrementAndGet();
+                stats.msgPackRecvd();
                 processIncomingMessagePacket((MessagePacket) packet, fromIP, fromPort);
             } else {
                 error("incorrect packet: it's neither a msg nor an ack packet");
@@ -187,14 +183,7 @@ public class PerfectLinkUdp {
                 } catch (SocketException e) {
                     var msg = e.getMessage();
                     if (msg.equals("Socket closed")) {
-                        info(
-                                "sent packs\n" +
-                                        "  msg: " + nMsgPacksSent + "\n" +
-                                        "  ack: " + nAcksSent + "\n" +
-                                        "received packs\n" +
-                                        "  msg: " + nMsgPacksRecvd + "\n" +
-                                        "  ack: " + nAckPacksRecvd + "\n"
-                        );
+                        stats.logInfo();
                         break;
                     }
                 } catch (IOException e) {
