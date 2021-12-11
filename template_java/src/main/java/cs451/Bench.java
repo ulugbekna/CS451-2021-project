@@ -1,5 +1,8 @@
 package cs451;
 
+/**
+ * Used to measure time spent
+ */
 public class Bench {
     private final long startTime;
 
