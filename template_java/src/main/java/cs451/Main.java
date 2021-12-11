@@ -66,6 +66,8 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Log.NONE();
 
+        exec.setRemoveOnCancelPolicy(true);
+
         Parser parser = new Parser(args);
         parser.parse();
         var configParser = new ConfigParser();
