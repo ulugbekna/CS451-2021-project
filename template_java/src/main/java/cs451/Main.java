@@ -11,13 +11,13 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
+import static cs451.Constants.THREAD_POOL_SZ;
 import static cs451.Log.*;
 
 public class Main {
     /*
      * CONSTANTS
      * */
-    final static int THREAD_POOL_SZ = 1024; // TODO: too many -- what can we do about this?
 
     /*
      DATA
