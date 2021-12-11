@@ -71,6 +71,8 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Log.NONE();
 
+        initSignalHandlers();
+
         exec.setRemoveOnCancelPolicy(true);
 
         Parser parser = new Parser(args);
@@ -78,8 +80,6 @@ public class Main {
         var configParser = new ConfigParser();
         configParser.populate(parser.config());
         var nMsgsToBroadcast = configParser.parseFifoBroadcastConfig();
-
-        initSignalHandlers();
 
         long pid = ProcessHandle.current().pid();
         trace("PID: " + pid + "\n");
