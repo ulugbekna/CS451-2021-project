@@ -32,7 +32,7 @@ public class UniformReliableBroadcastUdp {
         this.onDeliverCallback = onDeliverCallback;
         this.exec = exec;
 
-        beb = new BestEffortBroadcastUdp(myProcId, socket, exec, this::onBebDeliver);
+        beb = new BestEffortBroadcastUdp(socket, exec, this::onBebDeliver);
 
         /* Internal State: */
         delivered = new ConcurrentHashMap<>();

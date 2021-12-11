@@ -14,12 +14,10 @@ import static cs451.Constants.SEND_RECV_BUF_SZ;
 
 public class BestEffortBroadcastUdp {
     private final PerfectLinkUdp plink;
-    private final int myProcId;
     private final Consumer<MessagePacket> onDeliverCallback;
 
-    public BestEffortBroadcastUdp(int myProcId, DatagramSocket socket, ScheduledExecutorService exec,
+    public BestEffortBroadcastUdp(DatagramSocket socket, ScheduledExecutorService exec,
                                   Consumer<MessagePacket> onDeliverCallback) {
-        this.myProcId = myProcId;
         this.onDeliverCallback = onDeliverCallback;
         plink = new PerfectLinkUdp(socket, exec, onDeliverCallback);
     }
