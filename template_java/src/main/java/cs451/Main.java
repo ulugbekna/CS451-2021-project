@@ -22,14 +22,20 @@ public class Main {
     /*
      DATA
      */
-    final static long executionStartTime = System.nanoTime();
-    final static ScheduledThreadPoolExecutor exec =
-            new ScheduledThreadPoolExecutor(THREAD_POOL_SZ);
 
+    // to measure how much whole program execution took
+    final static Bench wholeProgramExecution = new Bench();
+
+    // create thread pool
+    final static ScheduledThreadPoolExecutor exec = new ScheduledThreadPoolExecutor(THREAD_POOL_SZ);
+
+    // log "broadcast" and "deliver" events
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
 
+    // path to the file to which events are written
     static String outputFilePath; // must be set by main()
-    private static DatagramSocket globalSocket = null; // must be set by main()
+
+    private static DatagramSocket globalSocket; // must be set by main()
 
     /*
      FUNCTIONALITY
@@ -41,18 +47,18 @@ public class Main {
         if (globalSocket != null) globalSocket.close();
 
         try {
-            long startTime = System.nanoTime();
+            var writingEventLogToFile = new Bench();
             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
             for (String s : eventLog) {
                 writer.write(s);
                 writer.write('\n');
             }
             writer.flush();
-            long endTime = System.nanoTime();
-            info("Writing to output file time in milliseconds: " + (endTime - startTime) / 1000000);
-            info("Execution time in milliseconds: " + (System.nanoTime() - executionStartTime) / 1000000);
+            writer.close(); // TODO: should be done in `finally` ?
 
-            writer.close();
+            info("Writing to output file time in milliseconds: " + writingEventLogToFile.timeElapsedMS());
+
+            info("Program execution time in milliseconds: " + wholeProgramExecution.timeElapsedMS());
         } catch (Exception e) {
             error("flushing to file", e);
         }
