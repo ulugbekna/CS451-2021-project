@@ -69,6 +69,7 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
+        /* START: Program state initialization */
         Log.NONE();
 
         initSignalHandlers();
@@ -79,7 +80,6 @@ public class Main {
         parser.parse();
         var configParser = new ConfigParser();
         configParser.populate(parser.config());
-        var nMsgsToBroadcast = configParser.parseFifoBroadcastConfig();
 
         long pid = ProcessHandle.current().pid();
         trace("PID: " + pid + "\n");
@@ -120,22 +120,24 @@ public class Main {
         final var socket = new DatagramSocket(myNode.me.port, myNode.me.addr);
         globalSocket = socket;
 
-        var fifob = new FifoBroadcast(
-                myNode.me.id,
-                myNode.peers,
-                socket,
-                exec,
-                (MessagePacket m) ->
-                        eventLog.add("d " + m.authorId + " " + m.messageId));
+        /* END: Program state initialization */
+
+        /* START: Program actions */
+        var nMsgsToBroadcast = configParser.parseFifoBroadcastConfig();
+
+        var urb = new UniformReliableBroadcastUdp(myNode.me.id, myPeers, socket, exec,
+                (m) -> eventLog.add("d " + m.authorId + " " + m.messageId));
 
         exec.submit(() -> {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
                 eventLog.add("b " + i);
                 var msg = new MessagePacket(myNode.me.id, i, myNode.me.id, String.valueOf(i));
-                fifob.broadcast(msg);
+                urb.broadcast(msg);
             }
         });
 
-        fifob.blockingListen();
+        urb.blockingListen();
+
+        /* END: Program actions */
     }
 }
