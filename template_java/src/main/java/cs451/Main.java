@@ -9,8 +9,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import static cs451.Log.*;
 
@@ -24,8 +23,8 @@ public class Main {
      DATA
      */
     final static long executionStartTime = System.nanoTime();
-    final static ScheduledExecutorService exec =
-            Executors.newScheduledThreadPool(THREAD_POOL_SZ /* `-1` because of main thread */);
+    final static ScheduledThreadPoolExecutor exec =
+            new ScheduledThreadPoolExecutor(THREAD_POOL_SZ);
 
     final static ConcurrentLinkedQueue<String> eventLog = new ConcurrentLinkedQueue<>();
 
