@@ -34,14 +34,19 @@ public class PerfectLinkUdp {
     /*
      * DATA
      * */
+
+    /* Provided as arguments */
     private final DatagramSocket socket;
     private final ScheduledExecutorService exec;
+    private final Consumer<MessagePacket> onDeliverCallback;
+
+    /* Internal state */
     private final AckSyncTbl ackSyncTbl;
     private final ConcurrentHashMap<MessagePacket, Boolean> seenMsgs;
 
+    /* Internal state for statistics collection */
     private final PerfectLinkStats stats;
 
-    private final Consumer<MessagePacket> onDeliverCallback;
 
     /*
      * FUNCTIONALITY
@@ -69,11 +74,11 @@ public class PerfectLinkUdp {
         }
     }
 
-    /*
+    /**
      * Sends a packet, schedules its resend and puts the future corresponding to the resend to the `ackSyncTbl`.
-     *
+     * <p>
      * Invariant: do not raise
-     * */
+     */
     public void sendMsg(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
             trace("sendMsg",
