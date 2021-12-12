@@ -85,17 +85,17 @@ public class Main {
         trace("PID: " + pid + "\n");
         info("From a new terminal type `kill -SIGINT " + pid + "` or `kill -SIGTERM " + pid + "` to " + "stop processing packets\n");
 
-        trace("List of resolved hosts is:");
-        for (Host host : parser.hosts()) {
-            trace("\t" + host.getId() + " | " + host.getIp() + ":" + host.getPort());
-        }
-
-        trace("Path to output: " + parser.output());
-        trace("Path to config " + parser.config());
-
         outputFilePath = parser.output();
 
+        trace("Path to output: " + outputFilePath);
+        trace("Path to config: " + parser.config());
+
         var hosts = parser.hosts();
+
+        trace("List of resolved hosts is:");
+        for (Host host : hosts) {
+            trace("\t" + host.getId() + " | " + host.getIp() + ":" + host.getPort());
+        }
 
         // resolve myAddr, myPort, myPeers
         var myPeers = new HashMap<Integer, Node>(hosts.size() - 1);
