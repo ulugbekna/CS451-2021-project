@@ -65,7 +65,7 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        Log.NONE();
+        Log.TRACE();
 
         Parser parser = new Parser(args);
         parser.parse();
