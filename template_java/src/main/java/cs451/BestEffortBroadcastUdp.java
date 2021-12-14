@@ -1,16 +1,12 @@
 package cs451;
 
 import cs451.packets.MessagePacket;
-import cs451.packets.PacketCodec;
 
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static cs451.Constants.INITIAL_RESEND_TIMEOUT;
-import static cs451.Constants.SEND_RECV_BUF_SZ;
 import static cs451.Log.error;
 
 public class BestEffortBroadcastUdp {
@@ -43,12 +39,6 @@ public class BestEffortBroadcastUdp {
     void broadcast(MessagePacket msg, HashMap<Integer, Node> peers) {
         deliver(msg);
 
-        var outBuf = new byte[SEND_RECV_BUF_SZ];
-        var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, msg);
-
-        peers.forEach((_procId, peerNode) -> {
-            var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerNode.addr, peerNode.port);
-            plink.sendMsg(msg.messageId, outPacket);
-        });
+        plink.sendMsgs(msg, peers.values()); // NOTE: we're guaranteed that `peers.values()` doesn't change
     }
 }

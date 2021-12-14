@@ -10,6 +10,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -84,16 +85,15 @@ public class PerfectLinkUdp {
      * <p>
      * Invariant: do not raise
      */
-    private void sendMsg(int messageId, DatagramPacket outPacket, int timeoutMs) {
+    private void sendPacket(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
-            trace("sendMsg",
-                    "sending message (id: " + messageId + ") to : " +
-                            outPacket.getPort() + " with timeout: " + timeoutMs);
+            trace("sendPacket", "sending msg (id: " + messageId + ") to : " +
+                    outPacket.getPort() + " with timeout: " + timeoutMs);
 
             sendPacketOrFailSilently(socket, outPacket); // fail silently as we anyway resend until an ack is recvd
 
             var infResend = exec.schedule(
-                    () -> sendMsg(messageId, outPacket, timeoutMs * TIMEOUT_MULTIPLICATION_COEFF),
+                    () -> sendPacket(messageId, outPacket, timeoutMs * TIMEOUT_MULTIPLICATION_COEFF),
                     timeoutMs, TimeUnit.MILLISECONDS);
 
             ackSyncTbl.set(outPacket.getPort(), messageId, infResend);
@@ -102,8 +102,14 @@ public class PerfectLinkUdp {
         }
     }
 
-    public void sendMsg(int messageId, DatagramPacket outPacket) {
-        sendMsg(messageId, outPacket, INITIAL_RESEND_TIMEOUT);
+    public void sendMsgs(MessagePacket m, Collection<Node> toWhom) {
+        var outBuf = new byte[SEND_RECV_BUF_SZ];
+        var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, m);
+
+        for (var node : toWhom) {
+            var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, node.addr, node.port);
+            sendPacket(m.messageId, outPacket, INITIAL_RESEND_TIMEOUT);
+        }
     }
 
     /*
