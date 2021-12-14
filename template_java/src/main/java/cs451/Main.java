@@ -70,7 +70,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         /* START: Program state initialization */
-        Log.NONE();
+        Log.TRACE();
 
         initSignalHandlers();
 
