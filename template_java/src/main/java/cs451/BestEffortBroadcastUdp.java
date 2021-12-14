@@ -6,31 +6,42 @@ import cs451.packets.PacketCodec;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.HashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.function.Consumer;
 
 import static cs451.Constants.INITIAL_RESEND_TIMEOUT;
 import static cs451.Constants.SEND_RECV_BUF_SZ;
+import static cs451.Log.error;
 
 public class BestEffortBroadcastUdp {
     private final PerfectLinkUdp plink;
-    private final Consumer<MessagePacket> onDeliverCallback;
+    private final LinkedBlockingQueue<MessagePacket> deliveredQ;
 
-    public BestEffortBroadcastUdp(DatagramSocket socket, ScheduledExecutorService exec,
-                                  Consumer<MessagePacket> onDeliverCallback) {
-        this.onDeliverCallback = onDeliverCallback;
-        plink = new PerfectLinkUdp(socket, exec, onDeliverCallback);
+    public BestEffortBroadcastUdp(DatagramSocket socket,
+                                  ScheduledExecutorService exec,
+                                  LinkedBlockingQueue<MessagePacket> deliveredQ) {
+        this.deliveredQ = deliveredQ;
+
+        plink = new PerfectLinkUdp(socket, exec, this::deliver);
     }
 
-    void blockingListen() {
+    public void blockingListen() {
         plink.listenToAndHandleIncomingPackets(); // beware: blocks the thread
+    }
+
+    private void deliver(MessagePacket m) {
+        try {
+            deliveredQ.put(m);
+        } catch (InterruptedException e) {
+            error("BEB deliver: put failure", e);
+        }
     }
 
     /**
      * Broadcast a message
      */
     void broadcast(MessagePacket msg, HashMap<Integer, Node> peers) {
-        onDeliverCallback.accept(msg);
+        deliver(msg);
 
         var outBuf = new byte[SEND_RECV_BUF_SZ];
         var nBytesWritten = PacketCodec.serializeMessagePacket(outBuf, msg);

@@ -6,8 +6,11 @@ import java.net.DatagramSocket;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
+
+import static cs451.Log.error;
 
 public class UniformReliableBroadcastUdp {
     private final int myProcId;
@@ -23,6 +26,8 @@ public class UniformReliableBroadcastUdp {
 
     private final BestEffortBroadcastUdp beb;
 
+    private final LinkedBlockingQueue<MessagePacket> bebDeliveredQ;
+
     public UniformReliableBroadcastUdp(int myProcId, HashMap<Integer, Node> peers,
                                        DatagramSocket socket, ScheduledExecutorService exec,
                                        Consumer<MessagePacket> onDeliverCallback) {
@@ -32,7 +37,8 @@ public class UniformReliableBroadcastUdp {
         this.onDeliverCallback = onDeliverCallback;
         this.exec = exec;
 
-        beb = new BestEffortBroadcastUdp(socket, exec, this::onBebDeliver);
+        bebDeliveredQ = new LinkedBlockingQueue<>();
+        beb = new BestEffortBroadcastUdp(socket, exec, bebDeliveredQ);
 
         /* Internal State: */
         delivered = new ConcurrentHashMap<>();
@@ -69,7 +75,14 @@ public class UniformReliableBroadcastUdp {
      * Blocks!
      * */
     void blockingListen() {
-        beb.blockingListen();
+        exec.submit(beb::blockingListen); // Important: blocks a whole thread in the thread pool
+        while (true) {
+            try {
+                onBebDeliver(bebDeliveredQ.take());
+            } catch (InterruptedException e) {
+                error("URB: blocking listen: ", e);
+            }
+        }
     }
 
     void broadcast(MessagePacket msg) {
