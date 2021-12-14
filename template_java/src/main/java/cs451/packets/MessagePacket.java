@@ -1,5 +1,6 @@
 package cs451.packets;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public class MessagePacket extends Packet {
@@ -7,16 +8,20 @@ public class MessagePacket extends Packet {
      * message content
      */
     public final int authorId;
-    public final String message;
+    public final byte[] payload;
 
-    public MessagePacket(int senderId, int msgId, int authorId, String msg) {
+    public MessagePacket(int senderId, int msgId, int authorId, byte[] payload) {
         super(senderId, msgId);
-        this.message = msg;
+        this.payload = payload;
         this.authorId = authorId;
     }
 
     public MessagePacket copyWithSenderId(int newSenderId) {
-        return new MessagePacket(newSenderId, messageId, authorId, message);
+        return new MessagePacket(newSenderId, messageId, authorId, payload);
+    }
+
+    public MessagePacket copyWithDifferentPayload(byte[] newPayload) {
+        return new MessagePacket(senderId, messageId, authorId, newPayload);
     }
 
     @Override
@@ -39,7 +44,7 @@ public class MessagePacket extends Packet {
                 "authorId=" + authorId +
                 ", senderId=" + senderId +
                 ", messageId=" + messageId +
-                ", message='" + message + '\'' +
+                ", message='" + Arrays.toString(payload) + '\'' +
                 '}';
     }
 }

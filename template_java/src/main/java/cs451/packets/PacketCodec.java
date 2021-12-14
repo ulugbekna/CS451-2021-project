@@ -2,7 +2,6 @@ package cs451.packets;
 
 import cs451.Log;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class PacketCodec {
@@ -15,12 +14,12 @@ public class PacketCodec {
 
     private static final int PACKET_HEADER_KIND_IDX = 0;
     private static final int PACKET_HEADER_SENDER_ID_IDX = 1;
-    private static final int PACKET_HEADER_MESSAGE_ID_IDX = PACKET_HEADER_SENDER_ID_IDX + Integer.BYTES;
+    private static final int PACKET_HEADER_PAYLOAD_ID_IDX = PACKET_HEADER_SENDER_ID_IDX + Integer.BYTES;
 
     // MessagePacket-only
 
-    private static final int PACKET_HEADER_AUTHOR_ID_IDX = PACKET_HEADER_MESSAGE_ID_IDX + Integer.BYTES;
-    private static final int PACKET_MESSAGE_IDX = PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES;
+    private static final int PACKET_HEADER_AUTHOR_ID_IDX = PACKET_HEADER_PAYLOAD_ID_IDX + Integer.BYTES;
+    private static final int PACKET_PAYLOAD_IDX = PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES;
 
     /* deserializes an integer from buf[offset:offset+4] right side of range exclusive */
     private static int getIntFromBytes(byte[] buf, int offset) {
@@ -42,7 +41,7 @@ public class PacketCodec {
      * */
     public static Packet deserialize(byte[] buf, int len) {
         assert len > 8;
-        var msgId = getIntFromBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX);
+        var msgId = getIntFromBytes(buf, PACKET_HEADER_PAYLOAD_ID_IDX);
         var senderId = getIntFromBytes(buf, PACKET_HEADER_SENDER_ID_IDX);
         switch (buf[PACKET_HEADER_KIND_IDX]) {
             case PACKET_KIND_ACK:
@@ -50,7 +49,7 @@ public class PacketCodec {
             case PACKET_KIND_MSG:
                 var authorId = getIntFromBytes(buf, PACKET_HEADER_AUTHOR_ID_IDX);
                 return new MessagePacket(senderId, msgId, authorId,
-                        new String(Arrays.copyOfRange(buf, PACKET_MESSAGE_IDX, len)));
+                        Arrays.copyOfRange(buf, PACKET_PAYLOAD_IDX, len));
             default:
                 Log.error("error in deserialization");
                 throw new RuntimeException("Incorrect serialized format received");
@@ -60,21 +59,20 @@ public class PacketCodec {
     public static int serializeAckPacket(byte[] buf, int senderId, int messageId) {
         buf[PACKET_HEADER_KIND_IDX] = PACKET_KIND_ACK;
         putIntToBytes(buf, PACKET_HEADER_SENDER_ID_IDX, senderId);
-        putIntToBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX, messageId);
+        putIntToBytes(buf, PACKET_HEADER_PAYLOAD_ID_IDX, messageId);
         return 9;
     }
 
-    public static int serializeMessagePacket(byte[] buf, int senderId, int messageId, int authorId, String message) {
+    public static int serializeMessagePacket(byte[] buf, int senderId, int messageId, int authorId, byte[] payload) {
         buf[PACKET_HEADER_KIND_IDX] = PACKET_KIND_MSG;
         putIntToBytes(buf, PACKET_HEADER_SENDER_ID_IDX, senderId);
-        putIntToBytes(buf, PACKET_HEADER_MESSAGE_ID_IDX, messageId);
+        putIntToBytes(buf, PACKET_HEADER_PAYLOAD_ID_IDX, messageId);
         putIntToBytes(buf, PACKET_HEADER_AUTHOR_ID_IDX, authorId);
-        var messageBytes = message.getBytes(StandardCharsets.US_ASCII);
-        System.arraycopy(messageBytes, 0, buf, PACKET_MESSAGE_IDX, messageBytes.length);
-        return PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES + messageBytes.length;
+        System.arraycopy(payload, 0, buf, PACKET_PAYLOAD_IDX, payload.length);
+        return PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES + payload.length;
     }
 
     public static int serializeMessagePacket(byte[] buf, MessagePacket m) {
-        return serializeMessagePacket(buf, m.senderId, m.messageId, m.authorId, m.message);
+        return serializeMessagePacket(buf, m.senderId, m.messageId, m.authorId, m.payload);
     }
 }
