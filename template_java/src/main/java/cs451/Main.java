@@ -46,22 +46,19 @@ public class Main {
 
         if (globalSocket != null) globalSocket.close();
 
-        try {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath))) {
             var writingEventLogToFile = new Bench();
-            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
             for (String s : eventLog) {
                 writer.write(s);
                 writer.write('\n');
             }
             writer.flush();
-            writer.close(); // TODO: should be done in `finally` ?
-
             info("Writing to output file time in milliseconds: " + writingEventLogToFile.timeElapsedMS());
-
-            info("Program execution time in milliseconds: " + wholeProgramExecution.timeElapsedMS());
-        } catch (Exception e) {
+        } catch (IOException e) {
             error("flushing to file", e);
         }
+
+        info("Program execution time in milliseconds: " + wholeProgramExecution.timeElapsedMS());
     }
 
     private static void initSignalHandlers() {
