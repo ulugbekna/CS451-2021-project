@@ -22,7 +22,7 @@ public class Constants {
      * Constants introduced by Ulugbek
      * */
 
-    public final static int THREAD_POOL_SZ = 1024; // TODO: too many -- what can we do about this?
+    public final static int THREAD_POOL_SZ = 128;
 
     public static final int SEND_RECV_BUF_SZ = 32;
     public static final int INITIAL_RESEND_TIMEOUT = 200; // milliseconds
