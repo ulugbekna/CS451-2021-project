@@ -25,12 +25,12 @@ public class MessagePacket extends Packet {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         MessagePacket that = (MessagePacket) o;
-        return authorId == that.authorId && Objects.equals(message, that.message);
+        return authorId == that.authorId;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), authorId, message);
+        return Objects.hash(super.hashCode(), authorId);
     }
 
     @Override
