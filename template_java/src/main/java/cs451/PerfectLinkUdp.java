@@ -15,11 +15,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static cs451.Constants.ACK_PACK_SZ;
-import static cs451.Constants.SEND_RECV_BUF_SZ;
+import static cs451.Constants.*;
 import static cs451.Log.*;
 
 /*
+ * TODO:
+ *  The way we allocated buffers now for sending packets is bad. We allocate a lot.
+ *      Option 1. Write a pool of byte buffers that can be reused when they're no more useful, ie
+ *          their sending is cancelled
+ *      Option 2. Write a single large buffer in which we can reuse slots - this should be even better
+ * e
  * TODO: write tests
  * TODO: profile
  * TODO: reuse byte[] when can when sending packets?
@@ -79,10 +84,10 @@ public class PerfectLinkUdp {
      * <p>
      * Invariant: do not raise
      */
-    public void sendMsg(int messageId, DatagramPacket outPacket, int timeoutMs) {
+    private void sendMsg(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
             trace("sendMsg",
-                    "sending message (id: " + messageId + ") to :" +
+                    "sending message (id: " + messageId + ") to : " +
                             outPacket.getPort() + " with timeout: " + timeoutMs);
 
             sendPacketOrFailSilently(socket, outPacket); // fail silently as we anyway resend until an ack is recvd
@@ -95,6 +100,10 @@ public class PerfectLinkUdp {
         } catch (Throwable e) {
             error("couldn't send a message packet from perfect links config", e);
         }
+    }
+
+    public void sendMsg(int messageId, DatagramPacket outPacket) {
+        sendMsg(messageId, outPacket, INITIAL_RESEND_TIMEOUT);
     }
 
     /*
@@ -162,16 +171,18 @@ public class PerfectLinkUdp {
     }
 
 
-    /*
-     * Listen to a socket and submit tasks to schedule incoming packets
-     *  - AckPacket: stop resending
-     *  - MessagePacket: acknowledge
-     *
+    /**
+     * Listen to a socket and submit tasks to scheduler to handle incoming packets
+     * - AckPacket: stop resending
+     * - MessagePacket: acknowledge
+     * <p>
      * Assumptions:
      * - assumes that an `IOException` thrown from `socket.receive()` means that the socket was closed
+     * <p>
      * Notes:
-     * - this fn is blocking
-     * */
+     * - Important: this fn is blocking
+     * - Important: Doesn't throw exceptions.
+     */
     public void listenToAndHandleIncomingPackets() {
         try {
             byte[] recvBuf = new byte[SEND_RECV_BUF_SZ];
@@ -192,7 +203,7 @@ public class PerfectLinkUdp {
                         break;
                     }
                 } catch (IOException e) {
-                    error("on receive: sending an ack", e);
+                    error("on receive", e);
                 }
             }
         } catch (Exception e) {

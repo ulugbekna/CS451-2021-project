@@ -48,7 +48,7 @@ public class BestEffortBroadcastUdp {
 
         peers.forEach((_procId, peerNode) -> {
             var outPacket = new DatagramPacket(outBuf, 0, nBytesWritten, peerNode.addr, peerNode.port);
-            plink.sendMsg(msg.messageId, outPacket, INITIAL_RESEND_TIMEOUT);
+            plink.sendMsg(msg.messageId, outPacket);
         });
     }
 }
