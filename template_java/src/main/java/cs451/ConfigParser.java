@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.stream.Collectors;
 
 public class ConfigParser {
 
@@ -46,6 +47,35 @@ public class ConfigParser {
         return arr;
     }
 
+    public LCBConfig parseLCBConfig() throws IOException {
+        var configFilePath = Paths.get(path);
+        try (var lines_strm = Files.lines(configFilePath)) {
+            var lines = lines_strm.collect(Collectors.toList());
+
+            var nMsgsToBroadcast = Integer.parseInt(lines.get(0));
+
+            var nProcs = lines.size() - 1;
+
+            var procCausality = new ProcArray<int[]>(nProcs);
+            for (int i = 1; i <= nProcs; ++i) {
+                var line = lines.get(i);
+                var nums = line.split(" ");
+                var procId = Integer.parseInt(nums[0]);
+                if (nums.length == 1) {
+                    procCausality.setById(procId, new int[0]);
+                } else {
+                    var causalProcIds = new int[nums.length - 1];
+                    for (int j = 1; j < nums.length; ++j) {
+                        causalProcIds[j - 1] = Integer.parseInt(nums[j]);
+                    }
+                    procCausality.setById(procId, causalProcIds);
+                }
+            }
+
+            return new LCBConfig(nMsgsToBroadcast, procCausality);
+        }
+    }
+
     protected static class PerfectLinksConfig {
         public final int nMessages;
         public final int hostId;
@@ -58,6 +88,24 @@ public class ConfigParser {
         @Override
         public String toString() {
             return "PerfectLinksConfig{" + "nMessages=" + nMessages + ", hostId=" + hostId + '}';
+        }
+    }
+
+    protected static class LCBConfig {
+        public final int nMsgsToBroadcast;
+        public final ProcArray<int[]> procCausality;
+
+        public LCBConfig(int nMsgsToBroadcast, ProcArray<int[]> procCausality) {
+            this.nMsgsToBroadcast = nMsgsToBroadcast;
+            this.procCausality = procCausality;
+        }
+
+        @Override
+        public String toString() {
+            return "LCBConfig{" +
+                    "nMsgsToBroadcast=" + nMsgsToBroadcast +
+                    ", procCausality=" + procCausality +
+                    '}';
         }
     }
 }

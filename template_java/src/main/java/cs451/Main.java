@@ -123,7 +123,9 @@ public class Main {
         /* END: Program state initialization */
 
         /* START: Program actions */
-        var nMsgsToBroadcast = configParser.parseFifoBroadcastConfig();
+        var config = configParser.parseLCBConfig();
+        var nMsgsToBroadcast = config.nMsgsToBroadcast;
+        var procCausality = config.procCausality;
 
         var urb = new UniformReliableBroadcastUdp(myNode.me.id, myPeers, socket, exec,
                 (m) -> eventLog.add("d " + m.authorId + " " + m.messageId));
