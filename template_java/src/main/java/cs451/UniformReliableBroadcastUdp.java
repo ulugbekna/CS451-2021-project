@@ -73,6 +73,8 @@ public class UniformReliableBroadcastUdp {
 
     /*
      * Blocks!
+     *
+     * Takes up 2 threads: one for itself and the other for BEB
      * */
     public void blockingListen() {
         exec.submit(beb::blockingListen); // Important: blocks a whole thread in the thread pool
