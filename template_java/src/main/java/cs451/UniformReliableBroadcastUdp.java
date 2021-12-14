@@ -46,7 +46,7 @@ public class UniformReliableBroadcastUdp {
         ack = new ConcurrentHashMap<>();
     }
 
-    void onBebDeliver(MessagePacket bebDeliveredMsg) {
+    private void onBebDeliver(MessagePacket bebDeliveredMsg) {
         // TODO: useless allocation? ugly piece of code
         var originalMsg = bebDeliveredMsg.copyWithSenderId(bebDeliveredMsg.authorId);
 
@@ -74,7 +74,7 @@ public class UniformReliableBroadcastUdp {
     /*
      * Blocks!
      * */
-    void blockingListen() {
+    public void blockingListen() {
         exec.submit(beb::blockingListen); // Important: blocks a whole thread in the thread pool
         while (true) {
             try {
@@ -85,7 +85,7 @@ public class UniformReliableBroadcastUdp {
         }
     }
 
-    void broadcast(MessagePacket msg) {
+    public void broadcast(MessagePacket msg) {
         pending.put(msg, true);
         beb.broadcast(msg, peers);
     }
