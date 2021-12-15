@@ -9,6 +9,15 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static cs451.Log.error;
 
+/**
+ * Properties
+ * <p>
+ * BEB1. Validity: If pi and pj are correct, then every message broadcast by pi is eventually delivered by pj
+ * <p>
+ * BEB2. No duplication: No message is delivered more than once
+ * <p>
+ * BEB3. No creation: No message is delivered unless it was broadcast
+ */
 public class BestEffortBroadcastUdp {
     private final PerfectLinkUdp plink;
     private final LinkedBlockingQueue<MessagePacket> deliveredQ;
