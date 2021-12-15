@@ -83,5 +83,20 @@ public class LocalizedCausalBroadcast {
 
             this.vcm = vcm;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            LCBMessagePacket that = (LCBMessagePacket) o;
+
+            return origM.equals(that.origM);
+        }
+
+        @Override
+        public int hashCode() {
+            return origM.hashCode();
+        }
     }
 }
