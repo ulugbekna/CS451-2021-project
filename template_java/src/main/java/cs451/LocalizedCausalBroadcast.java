@@ -76,7 +76,7 @@ public class LocalizedCausalBroadcast {
             }
 
             // restore original payload
-            var originalPayloadLen = mWithVCEmbedded.payload.length - i * 4 - 4;
+            var originalPayloadLen = mWithVCEmbedded.payload.length - i * 4;
             var originalPayload = new byte[originalPayloadLen];
             System.arraycopy(mWithVCEmbedded.payload, i * 4, originalPayload, 0, originalPayloadLen);
             origM = mWithVCEmbedded.copyWithDifferentPayload(originalPayload);
