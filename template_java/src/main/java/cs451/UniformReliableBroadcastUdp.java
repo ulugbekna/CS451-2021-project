@@ -60,7 +60,10 @@ public class UniformReliableBroadcastUdp {
 
     private void onBebDeliver(MessagePacket bebDeliveredMsg) {
         // TODO: useless allocation? ugly piece of code
-        var originalMsg = bebDeliveredMsg.copyWithSenderId(bebDeliveredMsg.authorId);
+        var originalMsg =
+                bebDeliveredMsg.senderId == bebDeliveredMsg.authorId
+                        ? bebDeliveredMsg
+                        : bebDeliveredMsg.copyWithSenderId(bebDeliveredMsg.authorId);
 
         ack.compute(originalMsg, (MessagePacket _m, HashSet<Integer> currentSetOrNull) -> {
             var set = currentSetOrNull != null ? currentSetOrNull : new HashSet<Integer>();
