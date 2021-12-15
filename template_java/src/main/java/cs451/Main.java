@@ -1,13 +1,10 @@
 package cs451;
 
-import cs451.packets.MessagePacket;
-
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -125,19 +122,17 @@ public class Main {
         var nMsgsToBroadcast = config.nMsgsToBroadcast;
         var procCausality = config.procCausality;
 
-        var urb = new UniformReliableBroadcastUdp(myNode.me.id, myPeers, socket, exec,
+        var lcb = new LocalizedCausalBroadcast(myNode.me.id, myPeers, procCausality, socket, exec,
                 (m) -> eventLog.add("d " + m.authorId + " " + m.messageId));
 
         exec.submit(() -> {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
                 eventLog.add("b " + i);
-                var msg = new MessagePacket(myNode.me.id, i, myNode.me.id,
-                        String.valueOf(i).getBytes(StandardCharsets.US_ASCII));
-                urb.broadcast(msg);
+                lcb.broadcast(i, String.valueOf(i));
             }
         });
 
-        urb.blockingListen();
+        lcb.blockingListen();
 
         /* END: Program actions */
     }
