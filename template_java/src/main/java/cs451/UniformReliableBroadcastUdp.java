@@ -101,6 +101,8 @@ public class UniformReliableBroadcastUdp {
 
     public void broadcast(MessagePacket msg) {
         pending.put(msg, true);
+
+        // Note: broadcasting to myself is done at BEB level
         beb.broadcast(msg, peers);
     }
 }
