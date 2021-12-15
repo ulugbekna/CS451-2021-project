@@ -12,6 +12,18 @@ import java.util.function.Consumer;
 
 import static cs451.Log.error;
 
+/**
+ * Properties
+ * <p>
+ * URB1 = BEB1
+ * <p>
+ * URB2 = BEB2.
+ * <p>
+ * URB3 = BEB3.
+ * <p>
+ * URB4. Uniform Agreement:
+ * For _any_ message m, if any process delivers m, then every correct process delivers m
+ */
 public class UniformReliableBroadcastUdp {
     private final int myProcId;
     private final int nNodes;
