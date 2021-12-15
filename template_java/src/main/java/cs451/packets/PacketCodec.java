@@ -22,14 +22,14 @@ public class PacketCodec {
     private static final int PACKET_PAYLOAD_IDX = PACKET_HEADER_AUTHOR_ID_IDX + Integer.BYTES;
 
     /* deserializes an integer from buf[offset:offset+4] right side of range exclusive */
-    private static int getIntFromBytes(byte[] buf, int offset) {
+    public static int getIntFromBytes(byte[] buf, int offset) {
         return ((buf[offset] & 0xFF) << 24) |
                 ((buf[offset + 1] & 0xFF) << 16) |
                 ((buf[offset + 2] & 0xFF) << 8) |
                 ((buf[offset + 3] & 0xFF));
     }
 
-    private static void putIntToBytes(byte[] buf, int offset, int v) {
+    public static void putIntToBytes(byte[] buf, int offset, int v) {
         buf[offset] = (byte) (v >> 24);
         buf[offset + 1] = (byte) (v >> 16);
         buf[offset + 2] = (byte) (v >> 8);
