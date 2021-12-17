@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static cs451.Log.error;
@@ -50,6 +51,10 @@ public class LocalizedCausalBroadcast {
         vc = new VectorClock(nProcs); // is not concurrency-safe; must be using in `synchronized` block
 
         pending = new HashSet<>(32);
+
+        exec.scheduleAtFixedRate(() -> {
+            synchronized (vc) {tryDeliver();}
+        }, 100, 200, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -67,35 +72,40 @@ public class LocalizedCausalBroadcast {
      * Important: can NOT be run concurrently; access to `pending` in this function assumes mutexed access to pending
      * */
     private void onUrbDeliver(MessagePacket m) {
-        pending.add(new LCBMessagePacket(m));
-        final var delivered = new ArrayList<LCBMessagePacket>();
+        var lcb = new LCBMessagePacket(m);
         synchronized (vc) {
-            pending.forEach((lcb) -> { // TODO: can parallelize? beware synchronized block
-                var origM = lcb.origM;
-                if (origM.authorId == myProcId) { // my own message
-                    if (myLatestDeliveredMsgId == origM.messageId - 1) { // FIFO deliver my own message
-                        onDeliver.accept(origM);
-                        delivered.add(lcb);
-                        myLatestDeliveredMsgId += 1;
-                    }
-                    return;
-                }
-                if (vc.getById(origM.authorId) == origM.messageId - 1) { // enforce FIFO
-                    final var cProcs = causalProcs.getById(origM.authorId);
-                    final var vcm = lcb.vcm;
-                    var canDeliver = true;
-                    for (var cProcId : cProcs) {
-                        if (vc.getById(cProcId) < vcm.getById(cProcId))
-                            canDeliver = false;
-                    }
-                    if (canDeliver) {
-                        onDeliver.accept(origM);
-                        delivered.add(lcb);
-                        vc.increment(origM.authorId);
-                    }
-                }
-            });
+            pending.add(lcb);
+            tryDeliver();
         }
+    }
+
+    private void tryDeliver() {
+        final var delivered = new ArrayList<LCBMessagePacket>();
+        pending.forEach((lcb) -> { // TODO: can parallelize? beware synchronized block
+            var origM = lcb.origM;
+            if (origM.authorId == myProcId) { // my own message
+                if (myLatestDeliveredMsgId == origM.messageId - 1) { // FIFO deliver my own message
+                    onDeliver.accept(origM);
+                    delivered.add(lcb);
+                    myLatestDeliveredMsgId += 1;
+                }
+                return;
+            }
+            if (vc.getById(origM.authorId) == origM.messageId - 1) { // enforce FIFO
+                final var cProcs = causalProcs.getById(origM.authorId);
+                final var vcm = lcb.vcm;
+                var canDeliver = true;
+                for (var cProcId : cProcs) {
+                    if (vc.getById(cProcId) < vcm.getById(cProcId))
+                        canDeliver = false;
+                }
+                if (canDeliver) {
+                    onDeliver.accept(origM);
+                    delivered.add(lcb);
+                    vc.increment(origM.authorId);
+                }
+            }
+        });
         for (var d : delivered) {
             pending.remove(d);
         }
