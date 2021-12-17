@@ -127,6 +127,10 @@ public class Main {
         var lcb = new LocalizedCausalBroadcast(myNode.me.id, myPeers, procCausality, socket, exec,
                 (m) -> eventLog.add("d " + m.authorId + " " + m.messageId));
 
+//        Uncomment for URB
+//        var lcb = new UniformReliableBroadcastUdp(myNode.me.id, myPeers, socket, exec,
+//                (m) -> eventLog.add("d " + m.authorId + " " + m.messageId));
+
         exec.submit(() -> {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
                 var s = String.valueOf(i);
@@ -137,6 +141,9 @@ public class Main {
                  * that we broadcast `m` would result in incorrect program output. */
                 eventLog.add("b " + s);
                 lcb.broadcast(i, s);
+
+//              Uncomment for URB
+//              lcb.broadcast(new MessagePacket(myNode.me.id, i, myNode.me.id, String.valueOf(i).getBytes(StandardCharsets.US_ASCII)));
             }
         });
 
