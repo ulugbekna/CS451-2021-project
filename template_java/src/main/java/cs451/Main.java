@@ -44,6 +44,8 @@ public class Main {
 
         if (globalSocket != null) globalSocket.close();
 
+        info("Event log size: " + eventLog.size());
+
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath))) {
             var writingEventLogToFile = new Bench();
             for (String s : eventLog) {
