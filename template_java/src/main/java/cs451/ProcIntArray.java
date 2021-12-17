@@ -25,4 +25,9 @@ public class ProcIntArray implements Iterable<Integer> {
     public Iterator<Integer> iterator() {
         return Arrays.stream(arr).iterator();
     }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(arr);
+    }
 }
