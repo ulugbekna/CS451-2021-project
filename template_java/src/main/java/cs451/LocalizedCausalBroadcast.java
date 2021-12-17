@@ -47,7 +47,7 @@ public class LocalizedCausalBroadcast {
         urb = new UniformReliableBroadcastUdp(myProcId, peers, socket, exec,
                 (m) -> putInQ(urbDeliveredQ, m));
 
-        vc = new VectorClock(peers.size() + 1); // is not concurrency-safe; must be using in `synchronized` block
+        vc = new VectorClock(nProcs); // is not concurrency-safe; must be using in `synchronized` block
 
         pending = new HashSet<>(32);
     }
