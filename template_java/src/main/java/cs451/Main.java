@@ -127,8 +127,14 @@ public class Main {
 
         exec.submit(() -> {
             for (int i = 1; i <= nMsgsToBroadcast; ++i) {
-                eventLog.add("b " + i);
-                lcb.broadcast(i, String.valueOf(i));
+                var s = String.valueOf(i);
+
+                /* Order log then broadcast is important here I think.
+                 * If we broadcast msg `m`, a context change happens
+                 * during which we deliver `m` and then we log
+                 * that we broadcast `m` would result in incorrect program output. */
+                eventLog.add("b " + s);
+                lcb.broadcast(i, s);
             }
         });
 
