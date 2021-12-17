@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
@@ -28,7 +27,7 @@ public class LocalizedCausalBroadcast {
     private final VectorClock vc;
     private final ScheduledExecutorService exec;
 
-    private final ConcurrentHashMap<LCBMessagePacket, Boolean> pending;
+    private final HashMap<LCBMessagePacket, Boolean> pending; // NOTE: NOT concurrency-safe
 
     public LocalizedCausalBroadcast(int myProcId, HashMap<Integer, Node> peers, ProcArray<int[]> causalProcs,
                                     DatagramSocket socket, ScheduledExecutorService exec,
@@ -48,7 +47,7 @@ public class LocalizedCausalBroadcast {
 
         vc = new VectorClock(peers.size() + 1); // is not concurrency-safe; must be using in `synchronized` block
 
-        pending = new ConcurrentHashMap<>();
+        pending = new HashMap<>();
     }
 
     /**
@@ -62,6 +61,9 @@ public class LocalizedCausalBroadcast {
         }
     }
 
+    /*
+     * Important: can NOT be run concurrently; access to `pending` in this function assumes mutexed access to pending
+     * */
     private void onUrbDeliver(MessagePacket m) {
         pending.put(new LCBMessagePacket(m), true);
         final var delivered = new ArrayList<LCBMessagePacket>();
