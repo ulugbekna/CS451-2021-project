@@ -1,6 +1,5 @@
 package cs451.packets;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 public class MessagePacket extends Packet {
@@ -44,7 +43,6 @@ public class MessagePacket extends Packet {
                 "authorId=" + authorId +
                 ", senderId=" + senderId +
                 ", messageId=" + messageId +
-                ", message='" + Arrays.toString(payload) + '\'' +
                 '}';
     }
 }
