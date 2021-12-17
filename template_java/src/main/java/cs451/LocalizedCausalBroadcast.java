@@ -7,6 +7,7 @@ import java.net.DatagramSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,7 +28,7 @@ public class LocalizedCausalBroadcast {
     private final ScheduledExecutorService exec;
 
     private final VectorClock vc; // NOTE: NOT concurrency-safe (used only inside synchronized block)
-    private final HashMap<LCBMessagePacket, Boolean> pending; // NOTE: NOT concurrency-safe
+    private final HashSet<LCBMessagePacket> pending; // NOTE: NOT concurrency-safe
     private int myLatestDeliveredMsgId; // NOTE: NOT concurrency-safe
 
     public LocalizedCausalBroadcast(int myProcId, HashMap<Integer, Node> peers, ProcArray<int[]> causalProcs,
@@ -48,7 +49,7 @@ public class LocalizedCausalBroadcast {
 
         vc = new VectorClock(peers.size() + 1); // is not concurrency-safe; must be using in `synchronized` block
 
-        pending = new HashMap<>();
+        pending = new HashSet<>(32);
     }
 
     /**
@@ -66,10 +67,10 @@ public class LocalizedCausalBroadcast {
      * Important: can NOT be run concurrently; access to `pending` in this function assumes mutexed access to pending
      * */
     private void onUrbDeliver(MessagePacket m) {
-        pending.put(new LCBMessagePacket(m), true);
+        pending.add(new LCBMessagePacket(m));
         final var delivered = new ArrayList<LCBMessagePacket>();
         synchronized (vc) {
-            pending.forEach((lcb, _b) -> { // TODO: can parallelize? beware synchronized block
+            pending.forEach((lcb) -> { // TODO: can parallelize? beware synchronized block
                 var origM = lcb.origM;
                 if (origM.authorId == myProcId) { // my own message
                     if (myLatestDeliveredMsgId == origM.messageId - 1) { // FIFO deliver my own message
