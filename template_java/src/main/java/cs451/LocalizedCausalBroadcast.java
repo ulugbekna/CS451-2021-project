@@ -24,10 +24,11 @@ public class LocalizedCausalBroadcast {
     private final int nProcs;
     private final BlockingQueue<MessagePacket> urbDeliveredQ;
     private final UniformReliableBroadcastUdp urb;
-    private final VectorClock vc;
     private final ScheduledExecutorService exec;
 
+    private final VectorClock vc; // NOTE: NOT concurrency-safe (used only inside synchronized block)
     private final HashMap<LCBMessagePacket, Boolean> pending; // NOTE: NOT concurrency-safe
+    private int myLatestDeliveredMsgId; // NOTE: NOT concurrency-safe
 
     public LocalizedCausalBroadcast(int myProcId, HashMap<Integer, Node> peers, ProcArray<int[]> causalProcs,
                                     DatagramSocket socket, ScheduledExecutorService exec,
@@ -70,6 +71,14 @@ public class LocalizedCausalBroadcast {
         synchronized (vc) {
             pending.forEach((lcb, _b) -> { // TODO: can parallelize? beware synchronized block
                 var origM = lcb.origM;
+                if (origM.authorId == myProcId) { // my own message
+                    if (myLatestDeliveredMsgId == origM.messageId - 1) { // FIFO deliver my own message
+                        onDeliver.accept(origM);
+                        delivered.add(lcb);
+                        myLatestDeliveredMsgId += 1;
+                    }
+                    return;
+                }
                 if (vc.getById(origM.authorId) == origM.messageId - 1) { // enforce FIFO
                     final var cProcs = causalProcs.getById(origM.authorId);
                     final var vcm = lcb.vcm;
