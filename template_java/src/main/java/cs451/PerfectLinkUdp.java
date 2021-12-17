@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static cs451.Constants.*;
-import static cs451.Log.*;
 
 /*
  * TODO:
@@ -76,7 +75,7 @@ public class PerfectLinkUdp {
             socket.send(outPacket);
         } catch (Throwable e) {
             // any failure in sending a packet should be logged,
-            error("couldn't send a message packet from perfect links config", e);
+            Log.error("couldn't send a message packet from perfect links config", e);
         }
     }
 
@@ -87,8 +86,8 @@ public class PerfectLinkUdp {
      */
     private void sendPacket(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
-            trace("sendPacket", "sending msg (id: " + messageId + ") to : " +
-                    outPacket.getPort() + " with timeout: " + timeoutMs);
+            System.out.println(
+                    "sending msg (id: " + messageId + ") to : " + outPacket.getPort() + " with timeout: " + timeoutMs);
 
             sendPacketOrFailSilently(socket, outPacket); // fail silently as we anyway resend until an ack is recvd
 
@@ -98,7 +97,7 @@ public class PerfectLinkUdp {
 
             ackSyncTbl.set(outPacket.getPort(), messageId, infResend);
         } catch (Throwable e) {
-            error("couldn't send a message packet from perfect links config", e);
+            Log.error("couldn't send a message packet from perfect links config", e);
         }
     }
 
@@ -141,10 +140,10 @@ public class PerfectLinkUdp {
         try {
             socket.send(new DatagramPacket(packetBytes, nBytesWritten, fromIP, fromPort));
             stats.ackSent();
-            trace("processIncomingMessagePacket",
+            Log.trace("processIncomingMessagePacket",
                     "send: Ack { senderId = " + packet.senderId + "; Id = " + packet.messageId + " }");
         } catch (IOException e) {
-            warn("couldn't send ack to " +
+            Log.warn("couldn't send ack to " +
                     fromIP.toString() + ":" + fromPort + " " + ", but not resending", e);
         }
     }
@@ -161,7 +160,7 @@ public class PerfectLinkUdp {
      * */
     private void processIncomingPacket(Packet packet, InetAddress fromIP, int fromPort) {
         try {
-            trace("processIncomingPacket", "received " + packet);
+            Log.trace("processIncomingPacket", "received " + packet);
             if (packet instanceof AckPacket) {
                 stats.ackRecvd();
                 processIncomingAckPacket((AckPacket) packet, fromPort);
@@ -169,10 +168,10 @@ public class PerfectLinkUdp {
                 stats.msgPackRecvd();
                 processIncomingMessagePacket((MessagePacket) packet, fromIP, fromPort);
             } else {
-                error("incorrect packet: it's neither a msg nor an ack packet");
+                Log.error("incorrect packet: it's neither a msg nor an ack packet");
             }
         } catch (Exception e) {
-            error("processing incoming packet", e);
+            Log.error("processing incoming packet", e);
         }
     }
 
@@ -193,7 +192,7 @@ public class PerfectLinkUdp {
         try {
             byte[] recvBuf = new byte[SEND_RECV_BUF_SZ];
             DatagramPacket inputPacket = new DatagramPacket(recvBuf, recvBuf.length);
-            info("Starting to wait for a client to connect...");
+            Log.info("Starting to wait for a client to connect...");
 
             while (true) { // TODO: add support for interruption
                 try {
@@ -209,11 +208,11 @@ public class PerfectLinkUdp {
                         break;
                     }
                 } catch (IOException e) {
-                    error("on receive", e);
+                    Log.error("on receive", e);
                 }
             }
         } catch (Exception e) {
-            error("receiver", e);
+            Log.error("receiver", e);
         }
     }
 }
