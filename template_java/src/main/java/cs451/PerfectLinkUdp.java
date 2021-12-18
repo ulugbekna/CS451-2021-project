@@ -86,7 +86,7 @@ public class PerfectLinkUdp {
      */
     private void sendPacket(int messageId, DatagramPacket outPacket, int timeoutMs) {
         try {
-            System.out.println(
+            Log.trace(
                     "sending msg (id: " + messageId + ") to : " + outPacket.getPort() + " with timeout: " + timeoutMs);
 
             sendPacketOrFailSilently(socket, outPacket); // fail silently as we anyway resend until an ack is recvd
