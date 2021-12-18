@@ -52,9 +52,9 @@ public class LocalizedCausalBroadcast {
 
         pending = new HashSet<>(32);
 
-        exec.scheduleAtFixedRate(() -> {
-            synchronized (vc) {tryDeliver();}
-        }, 100, 200, TimeUnit.MILLISECONDS);
+//        exec.scheduleAtFixedRate(() -> {
+//            synchronized (vc) {tryDeliver();}
+//        }, 100, 100, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -81,7 +81,9 @@ public class LocalizedCausalBroadcast {
 
     private void tryDeliver() {
         final var delivered = new ArrayList<LCBMessagePacket>();
+//        Log.trace("pending size: " + pending.size());
         pending.forEach((lcb) -> { // TODO: can parallelize? beware synchronized block
+//            Log.trace(String.valueOf(lcb));
             var origM = lcb.origM;
             if (origM.authorId == myProcId) { // my own message
                 if (myLatestDeliveredMsgId == origM.messageId - 1) { // FIFO deliver my own message
@@ -127,7 +129,6 @@ public class LocalizedCausalBroadcast {
 
         var mWithVC = msgPackWithVC(msgId, message);
         urb.broadcast(mWithVC);
-        synchronized (vc) {vc.increment(myProcId);}
     }
 
     private MessagePacket msgPackWithVC(int msgId, String message) {
@@ -141,6 +142,7 @@ public class LocalizedCausalBroadcast {
             for (i = 0; i < nProcs; ++i) {
                 PacketCodec.putIntToBytes(payload, i * 4, vc.getById(i + 1));
             }
+            vc.increment(myProcId);
         }
 
         // copy oldPayload to newPayload
@@ -187,6 +189,11 @@ public class LocalizedCausalBroadcast {
         @Override
         public int hashCode() {
             return origM.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return "LCBMessagePacket" + origM + ", vcm=" + vcm;
         }
     }
 }
