@@ -22,10 +22,10 @@ public class Constants {
      * Constants introduced by Ulugbek
      * */
 
-    public final static int THREAD_POOL_SZ = 32;
+    public final static int THREAD_POOL_SZ = 128;
 
     public static final int SEND_RECV_BUF_SZ = 590; // TODO: make it dynamic based on the # of hosts
-    public static final int INITIAL_RESEND_TIMEOUT = 300; // milliseconds
+    public static final int INITIAL_RESEND_TIMEOUT = 200; // milliseconds
 
     /**
      * serialized AckPacket size in bytes
